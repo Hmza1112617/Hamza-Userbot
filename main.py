@@ -1930,6 +1930,109 @@ async def _ai_resolve_ent(target):
             return None
 
 
+async def _ai_run_raw_tl(p):
+    """ينفّذ استدعاء Telethon خام بلا قيود — يدعم عدة أشكال من الذكاء:
+    الشكل 1 (الموثّق): {"namespace","method","params"}
+    الشكل 2: {"request": {"_": "channels.GetFullChannel", "channel": "acjava"}}
+    الشكل 3: {"tl": "channels.GetFullChannel", "params": {...}}"""
+    try:
+        ns_name = None
+        method = None
+        params = {}
+
+        # الشكل 1
+        if p.get("namespace") and p.get("method"):
+            ns_name, method, params = p["namespace"], p["method"], (p.get("params") or {})
+
+        # الشكل 3
+        elif p.get("tl"):
+            tl = p["tl"]
+            if "." in tl:
+                ns_name, method = tl.split(".", 1)
+            else:
+                method = tl
+            params = p.get("params") or {}
+
+        # الشكل 2: request._ يحمل "namespace.Method"
+        elif isinstance(p.get("request"), dict) and p["request"].get("_"):
+            full = p["request"]["_"]
+            if "." in full:
+                ns_name, method = full.split(".", 1)
+            else:
+                method = full
+            # باقي حقول request هي المعطيات (ما عدا المفتاح "_")
+            params = {k: v for k, v in p["request"].items() if k != "_"}
+
+        if not method:
+            return "❌ تعذّر فهم شكل الاستدعاء raw_tl"
+
+        # تحديد الوحدة (namespace)
+        ns = None
+        if ns_name:
+            ns = getattr(functions, ns_name, None) or getattr(types, ns_name, None)
+        if ns is None:
+            # محاولة استنتاج الوحدة من اسم الدالة (مثلاً GetFullChannel -> channels)
+            guess = method.split("Get")[0].split("Edit")[0].split("Send")[0].split("Create")[0].split("Delete")[0].split("Resolve")[0].rstrip("s").lower() or "channels"
+            ns = getattr(functions, guess, None) or getattr(types, guess, None)
+        if ns is None:
+            return f"❌ لا توجد وحدة للدالة {method}"
+        fn = getattr(ns, method, None)
+        if fn is None:
+            return f"❌ لا توجد دالة {method} في {ns_name or guess}"
+
+        # تحويل المعطيات النصية إلى كيانات عند الإمكان (username/channel)
+        params = await _ai_coerce_params(fn, params)
+        res = await client(fn(**params))
+        return f"⚡ نتيجة {method}:\n{str(res)[:3000]}"
+    except Exception as e:
+        return f"❌ خطأ تنفيذ raw_tl: {e}"
+
+
+async def _ai_coerce_params(fn, params):
+    """يحوّل بعض المعطيات النصية (يوزر/رابط) إلى كيانات Telethon قبل الاستدعاء"""
+    import inspect
+    try:
+        sig = inspect.signature(fn)
+        fields = set(sig.parameters.keys())
+    except Exception:
+        fields = set(params.keys())
+    out = {}
+    for k, v in params.items():
+        if k in ("channel", "peer", "from_id", "to_id") and isinstance(v, str):
+            if v.startswith("@") or "t.me" in v or (v.lstrip("-").isdigit() and not v.isdigit()):
+                try:
+                    ent = await _ai_resolve_ent(v)
+                    if ent is not None:
+                        out[k] = ent  # Telethon يقبل كائن الكيان في معظم دوال TL
+                        continue
+                except Exception:
+                    pass
+        if k in ("user", "users") and isinstance(v, str):
+            if v.startswith("@") or "t.me" in v:
+                try:
+                    ent = await _ai_resolve_ent(v)
+                    if ent is not None:
+                        out[k] = ent if k == "user" else [ent]
+                        continue
+                except Exception:
+                    pass
+        if k in ("chats",) and isinstance(v, list):
+            try:
+                ents = []
+                for x in v:
+                    if isinstance(x, str) and (x.startswith("@") or "t.me" in x):
+                        e = await _ai_resolve_ent(x)
+                        if e: ents.append(e)
+                    else:
+                        ents.append(x)
+                out[k] = ents
+                continue
+            except Exception:
+                pass
+        out[k] = v
+    return out
+
+
 async def _ai_run_tool(call):
     """ينفّذ استدعاء أداة JSON صريح ويرجع النتيجة كنص"""
     name = call.get("name") or call.get("tool")
@@ -2042,14 +2145,7 @@ async def _ai_run_tool(call):
             await client.forward_messages(tch, p["message_id"], fch)
             return "✅ تم التوجيه"
         if name == "raw_tl":
-            ns = getattr(functions, p["namespace"], None) or getattr(types, p["namespace"], None)
-            if ns is None:
-                return f"❌ لا توجد وحدة {p['namespace']}"
-            fn = getattr(ns, p["method"], None)
-            if fn is None:
-                return f"❌ لا توجد دالة {p['method']}"
-            res = await client(fn(**p["params"]))
-            return f"⚡ نتيجة {p['namespace']}.{p['method']}:\n{str(res)[:3000]}"
+            return await _ai_run_raw_tl(p)
         return f"❌ أداة غير معروفة: {name}"
     except Exception as e:
         return f"❌ خطأ تنفيذ {name}: {e}"
