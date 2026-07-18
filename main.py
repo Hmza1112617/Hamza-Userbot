@@ -1591,6 +1591,11 @@ async def _(event):
     reply = await event.get_reply_message()
     reply_to = reply.id if reply else None
     spam_running = True
+    # حفظ الحالة لاستئنافها بعد إعادة التشغيل
+    db_set("settings", "spam_active", True)
+    db_set("settings", "spam_chat", event.chat_id)
+    db_set("settings", "spam_reply", reply_to)
+    db_set("settings", "spam_delay", spam_delay)
     spam_task = asyncio.ensure_future(_spam_loop(event.chat_id, reply_to))
     spam_typing_task = asyncio.ensure_future(_keep_typing(event.chat_id))
     state = "🛡️" if flood_guard_enabled else "🚫"
@@ -1606,6 +1611,7 @@ async def _(event):
     if not spam_running:
         return await edit_delete(event, "- الإرسال متوقف بالفعل", 6)
     spam_running = False
+    db_set("settings", "spam_active", False)
     if spam_typing_task:
         spam_typing_task.cancel()
         spam_typing_task = None
@@ -3650,6 +3656,76 @@ async def _ai_auto_watcher(event):
 # ============================================================
 
 
+async def _resume_persistent_tasks():
+    """يستأنف المهام المستمرة بعد إعادة التشغيل من إعدادات settings.json"""
+    global spam_running, spam_task, spam_typing_task, spam_delay, _time_task
+
+    # 1) السبام
+    if db_get("settings", "spam_active", False):
+        chat = db_get("settings", "spam_chat")
+        reply_to = db_get("settings", "spam_reply")
+        d = db_get("settings", "spam_delay", 5.0)
+        if chat:
+            spam_running = True
+            spam_delay = float(d) if d else 5.0
+            spam_task = asyncio.ensure_future(_spam_loop(chat, reply_to))
+            spam_typing_task = asyncio.ensure_future(_keep_typing(chat))
+            print("  ↻ تم استئناف الإرسال التلقائي (السبام)")
+        else:
+            db_set("settings", "spam_active", False)
+
+    # 2) الاسم الوقتي
+    if db_get("settings", "time_active", False):
+        if _time_task is None or _time_task.done():
+            _time_task = asyncio.ensure_future(_time_loop())
+        print("  ↻ تم استئناف الاسم الوقتي")
+
+    # 3) الشد (البلاغ المستمر)
+    try:
+        rcfg = db_read("report_cfg", {})
+        if rcfg.get("running") and rcfg.get("target"):
+            # نشغّل الحلقة من داخل event وهمي بسيط عبر استدعاء مباشر للحلقة
+            asyncio.ensure_future(_resume_report_loop(rcfg["target"]))
+            print("  ↻ تم استئناف البلاغ المستمر (الشد)")
+    except Exception:
+        pass
+
+
+async def _resume_report_loop(target):
+    """نسخة من حلقة الشد لتشغيلها بعد إعادة التشغيل دون أمر"""
+    from asyncio import sleep as _sleep
+    sent = 0
+    err_count = 0
+    while True:
+        cfg = _report_settings()
+        if not cfg.get("running", False) or not cfg.get("target"):
+            return
+        tgt = cfg.get("target")
+        alive, res = await _target_still_alive(tgt)
+        if not alive:
+            cfg = _report_settings()
+            cfg["running"] = False
+            db_write("report_cfg", cfg)
+            try:
+                await client.send_message("me", f"⛔ توقّف البلاغ المستمر تلقائياً:\n{res}\n📊 بلاغات مُرسلة: {sent}")
+            except Exception:
+                pass
+            return
+        ent = res
+        r = await _do_report(ent, cfg["reason"], cfg["message"])
+        if r is True:
+            sent += 1
+            err_count = 0
+        else:
+            err_count += 1
+            if err_count >= 5:
+                cfg = _report_settings()
+                cfg["running"] = False
+                db_write("report_cfg", cfg)
+                return
+        await _sleep(cfg["speed"])
+
+
 async def _startup():
     global flood_guard
     # ضبط safe.directory تلقائياً ليتجنّب خطأ dubious ownership لأي مستخدم
@@ -3673,6 +3749,8 @@ async def _startup():
     print(f"  حماية الفلود: {'🛡️ مفعلة' if flood_guard_enabled else '🚫 معطلة'}")
     print(f"  نوع الحساب: {'بريميوم' if is_premium else 'عادي'}")
     print("=" * 45)
+    # استئناف المهام المستمرة تلقائياً بعد إعادة التشغيل
+    await _resume_persistent_tasks()
     # رسالة بعد إعادة التشغيل
     rc = db_get("settings", "restart_chat")
     rm = db_get("settings", "restart_msg")
