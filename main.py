@@ -526,10 +526,19 @@ MENU = {
 `{p}اخر_تحديث` ◂ لعرض آخر إصدار منشور""",
     "م17": """**◂ باند و شد (فحص الروابط والمجموعات):**
 
+**الفحص:**
 `{p}فحص` <رابط/يوزر/آيدي> ◂ لفحص إن كان محظوراً/منتهياً/سكام
 `{p}فحص_دفعه` <رابط> ◂ فحص دعوة (ينضم مؤقتاً ويفحص)
 `{p}فحص_مجموعه` ◂ فحص المجموعة الحالية
-ملاحظة: يكشف انتهاك شروط تيليجرام (TOOLTIP) والحظر والروابط الوهمية.""",
+
+ **الشد الداخلي (بلاغ مستمر):**
+`{p}شد_هدف` <رابط/يوزر> ◂ يضع هدف البلاغ
+`{p}شد_نوع` <نوع> ◂ نوع المخالفة (سبام/اباحي/عنف/تحرش/حقوق/وهمي/غير_قانوني/اخر)
+`{p}شد_رساله` <نص> ◂ نص رسالة البلاغ
+`{p}شد_سرعه` <ثواني> ◂ سرعة التأخير بين البلاغات (1-60)
+`{p}شد` <رابط/يوزر> ◂ يبدأ البلاغ المستمر (يفحص كل دورة هل الهدف محظور)
+`{p}شد_ايقاف` ◂ يوقف البلاغ المستمر
+`{p}شد_اعداد` ◂ عرض الإعدادات""",
 }
 
 
@@ -1195,25 +1204,6 @@ async def _(event):
 # ============================================================
 #              أوامر البوت | SYSTEM
 # ============================================================
-
-
-@cmd(r"فحص$")
-async def _(event):
-    up = readable_time(time.time() - START_TIME)
-    me = await event.client.get_me()
-    txt = f"""**[ سورس حمزة ]**
-✦┅━╍━╍╍━━╍━━╍━┅✦
-
-**الحالة:** يعمل ✓
-**المالك:** {OWNER_NAME}
-**الحساب:** {get_display_name(me)}
-**البادئة:** `{PREFIX}`
-**مدة التشغيل:** {up}
-**المكتبة:** Telethon
-**التخزين:** JSON
-
-لعرض الأوامر أرسل `{PREFIX}الاوامر`"""
-    await edit_or_reply(event, txt)
 
 
 @cmd(r"بنك$")
@@ -2616,12 +2606,14 @@ async def ai_ask(question, event=None, owner_chat=False, with_tools=False):
 async def _(event):
     db_set("settings", "ai_auto", True)
     await edit_or_reply(event, "تم تشغيل وضع محادثة الذكاء بالخاص ✓")
+    raise events.StopPropagation()
 
 
 @cmd(r"ذكاء تعطيل$")
 async def _(event):
     db_set("settings", "ai_auto", False)
     await edit_or_reply(event, "تم تعطيل وضع محادثة الذكاء ✓")
+    raise events.StopPropagation()
 
 
 @cmd(r"ذكاء سياق(?:\s|$)([\s\S]*)")
@@ -2629,12 +2621,14 @@ async def _(event):
     global AI_CONTEXT_LIMIT
     arg = (event.pattern_match.group(1) or "").strip()
     if not arg.isdigit():
-        return await edit_delete(
+        await edit_delete(
             event, f"- اكتب: {PREFIX}ذكاء سياق <عدد الرسائل>\nالحالي: {AI_CONTEXT_LIMIT}", 8
         )
+        raise events.StopPropagation()
     AI_CONTEXT_LIMIT = min(int(arg), 200)
     db_set("settings", "ai_context", AI_CONTEXT_LIMIT)
     await edit_or_reply(event, f"تم ضبط عدد رسائل السياق إلى {AI_CONTEXT_LIMIT} ✓")
+    raise events.StopPropagation()
 
 
 @cmd(r"ذكاء مفعل$")
@@ -2651,6 +2645,7 @@ async def _(event):
         "• ينفّذ أوامر Telethon فعلياً ويرد بنتيجة كل إجراء\n"
         "• الرد التلقائي بالخاص معطّل (هذا الوضع للأمر المباشر)",
     )
+    raise events.StopPropagation()
 
 
 @cmd(r"ذكاء ذاكرة(?:\s|$)([\s\S]*)")
@@ -2660,11 +2655,14 @@ async def _(event):
     sid = getattr(sender, "id", "unknown")
     if arg in ("مسح", "حذف", "clear"):
         ai_mem_clear(sid)
-        return await edit_or_reply(event, "تم مسح ذاكرة المحادثة ✓")
+        await edit_or_reply(event, "تم مسح ذاكرة المحادثة ✓")
+        raise events.StopPropagation()
     mem = ai_mem_format(sid)
     if not mem:
-        return await edit_or_reply(event, "لا توجد ذاكرة محادثة بعد لهذا الشخص")
+        await edit_or_reply(event, "لا توجد ذاكرة محادثة بعد لهذا الشخص")
+        raise events.StopPropagation()
     await edit_or_reply(event, f"**ذاكرة المحادثة:**\n\n{mem}")
+    raise events.StopPropagation()
 
 
 @cmd(r"ذكاء جلسة(?:\s|$)([\s\S]*)")
@@ -2672,11 +2670,14 @@ async def _(event):
     arg = (event.pattern_match.group(1) or "").strip()
     if arg in ("مسح", "حذف", "clear"):
         ai_mem_clear("chat_owner")
-        return await edit_or_reply(event, "تم مسح جلسة المحادثة التفاعلية ✓")
+        await edit_or_reply(event, "تم مسح جلسة المحادثة التفاعلية ✓")
+        raise events.StopPropagation()
     mem = ai_mem_format("chat_owner")
     if not mem:
-        return await edit_or_reply(event, "لا توجد جلسة محادثة بعد")
+        await edit_or_reply(event, "لا توجد جلسة محادثة بعد")
+        raise events.StopPropagation()
     await edit_or_reply(event, f"**جلسة المحادثة التفاعلية:**\n\n{mem}")
+    raise events.StopPropagation()
 
 
 @cmd(r"دليل الذكاء$")
@@ -2684,12 +2685,14 @@ async def _(event):
     txt = build_source_info()
     n = len(txt)
     await edit_or_reply(event, f"تم توليد دليل السورس ✓\nالملف: data/source_info.txt\nعدد الأحرف: {n}")
+    raise events.StopPropagation()
 
 
 @cmd(r"ادوات الذكاء$")
 async def _(event):
     tools = _ai_tools_list()
     await edit_or_reply(event, f"عدد أدوات Telethon المعرّفة: {len(tools)}\nالملف: data/ai_tools.json\nأمر .ذكاء مفعل لتفعيل التنفيذ الحر")
+    raise events.StopPropagation()
 
 
 @cmd(r"تعليمات الذكاء(?:\s|$)([\s\S]*)")
@@ -2697,19 +2700,22 @@ async def _(event):
     arg = (event.pattern_match.group(1) or "").strip()
     if not arg:
         cur = _ai_load()["prompt"]
-        return await edit_or_reply(
+        await edit_or_reply(
             event,
             f"**◂ تعليمات الذكاء الحالية:**\n\n`{cur}`\n\n"
             f"للتعديل: `{PREFIX}تعليمات الذكاء <النص>`\n"
             f"للإرجاع: `{PREFIX}تعليمات الذكاء افتراضي`",
         )
+        raise events.StopPropagation()
     if arg == "افتراضي":
         db_set("ai", "prompt", _DEFAULT_AI_PROMPT)
-        return await edit_or_reply(event, "تم إرجاع التعليمات الافتراضية ✓")
+        await edit_or_reply(event, "تم إرجاع التعليمات الافتراضية ✓")
+        raise events.StopPropagation()
     data = _ai_load()
     data["prompt"] = arg
     db_write("ai", data)
     await edit_or_reply(event, "تم تحديث تعليمات الذكاء ✓")
+    raise events.StopPropagation()
 
 
 @cmd(r"ذكاء(?:\s|$)([\s\S]*)")
@@ -2782,8 +2788,9 @@ def _bc_extract(text):
 
 def _bc_name(entity):
     if isinstance(entity, User):
-        return (getattr(entity, "first_name", "") + " " + getattr(entity, "last_name", "")).strip()
-    return getattr(entity, "title", "") or str(getattr(entity, "id", "?"))
+        n = (getattr(entity, "first_name", "") + " " + getattr(entity, "last_name", "")).strip()
+        return n or str(getattr(entity, "id", "؟"))
+    return str(getattr(entity, "title", "") or getattr(entity, "id", "؟"))
 
 
 def _bc_type(entity):
@@ -2798,7 +2805,8 @@ def _bc_type(entity):
 
 def _bc_tos(entity, name=None):
     if name is None:
-        name = _bc_name(entity)
+        name = _bc_name(entity) or "؟"
+    name = str(name)
     for r in (getattr(entity, "restriction_reason", []) or []):
         if getattr(r, "reason", "") == "terms":
             return (
@@ -2836,14 +2844,15 @@ def _bc_translate(res):
     if res == "EXPIRED":
         return "⏰ الرابط منتهٍ الصلاحية"
     if res.startswith("SCAM_FAKE|"):
-        return f"🚨 رابط وهمي/نصب (SCAM): {res.split('|',1)[1]}"
+        parts = res.split("|", 1)
+        return f"🚨 رابط وهمي/نصب (SCAM): {parts[1] if len(parts) > 1 else '؟'}"
     if res.startswith("TOOLTIP:"):
-        return "🚫 " + res.replace("TOOLTIP:", "").strip()
+        return "🚫 " + res.replace("TOOLTIP:", "").strip().replace("None", "؟")
     if res.startswith("ERROR"):
         return "⚠️ " + res
     if res.startswith("FLOOD_WAIT"):
         return "⏳ " + res
-    return res
+    return res.replace("None", "؟")
 
 
 async def _bc_check_entity(identifier):
@@ -2889,7 +2898,7 @@ async def _bc_check_invite(hashv):
             return f"OK|{_bc_type(entity)}|{_bc_name(entity)}"
         return "OK|chat|MEMBER"
     if isinstance(result, ChatInvite):
-        title = getattr(result, "title", "?")
+        title = str(getattr(result, "title", "?") or "?")
         if getattr(result, "scam", False) or getattr(result, "fake", False):
             return f"SCAM_FAKE|{title}"
         try:
@@ -2929,7 +2938,21 @@ async def _bc_check(target):
 async def _(event):
     arg = (event.pattern_match.group(1) or "").strip()
     if not arg:
-        return await edit_delete(event, f"- اكتب: {PREFIX}فحص <رابط/يوزر/آيدي>", 8)
+        up = readable_time(time.time() - START_TIME)
+        me = await event.client.get_me()
+        txt = f"""**[ سورس حمزة ]**
+✦┅━╍━╍╍━━╍━━╍━┅✦
+
+**الحالة:** يعمل ✓
+**المالك:** {OWNER_NAME}
+**الحساب:** {get_display_name(me)}
+**البادئة:** `{PREFIX}`
+**مدة التشغيل:** {up}
+**المكتبة:** Telethon
+**التخزين:** JSON
+
+لعرض الأوامر أرسل `{PREFIX}الاوامر`"""
+        return await edit_or_reply(event, txt)
     m = await event.edit("🔍 جاري الفحص...")
     res = await _bc_check(arg)
     await edit_or_reply(m, _bc_translate(res))
@@ -2961,6 +2984,225 @@ async def _(event):
     except Exception as e:
         out = f"ERROR: {e}"
     await edit_or_reply(m, _bc_translate(out))
+
+
+# ============================================================
+#        شد داخلي | MASS REPORT (البلاغات)
+# ============================================================
+
+# أنواع البلاغات المتاحة في تيليجرام
+REPORT_REASONS = {
+    "سبام": "spam",
+    "اباحي": "porn",
+    "عنف": "violence",
+    "تحرش": "child_abuse",
+    "حقوق": "copyright",
+    "وهمي": "fake",
+    "غير_قانوني": "illegal",
+    "اخر": "other",
+    "spam": "spam",
+    "porn": "porn",
+    "violence": "violence",
+    "child_abuse": "child_abuse",
+    "copyright": "copyright",
+    "fake": "fake",
+    "illegal": "illegal",
+    "other": "other",
+}
+
+REPORT_REASON_OBJS = {
+    "spam": types.InputReportReasonSpam,
+    "porn": types.InputReportReasonPornography,
+    "pornography": types.InputReportReasonPornography,
+    "violence": types.InputReportReasonViolence,
+    "child_abuse": types.InputReportReasonChildAbuse,
+    "copyright": types.InputReportReasonCopyright,
+    "fake": types.InputReportReasonFake,
+    "illegal": types.InputReportReasonIllegalDrugs,
+    "illegal_drugs": types.InputReportReasonIllegalDrugs,
+    "other": types.InputReportReasonOther,
+}
+
+
+def _report_reason_obj(name):
+    key = REPORT_REASONS.get((name or "spam").lower(), "spam")
+    return REPORT_REASON_OBJS.get(key, types.InputReportReasonSpam)()
+
+
+def _report_settings():
+    """إعدادات البلاغ المحفوظة"""
+    s = db_read("report_cfg", {})
+    s.setdefault("reason", "spam")
+    s.setdefault("message", "محتوى مخالف لشروط تيليجرام")
+    s.setdefault("speed", 3)
+    s.setdefault("target", "")
+    s.setdefault("running", False)
+    return s
+
+
+async def _do_report(peer_entity, reason_name, message, msg_id=None):
+    """ينفّذ بلاغاً واحداً ويرجع True أو نص الخطأ"""
+    reason = _report_reason_obj(reason_name)
+    try:
+        if msg_id is not None:
+            await client(functions.messages.ReportRequest(
+                peer=peer_entity,
+                id=[int(msg_id)],
+                option=b"1",
+                message=message,
+            ))
+        else:
+            await client(functions.account.ReportPeerRequest(
+                peer=peer_entity,
+                reason=reason,
+                message=message,
+            ))
+        return True
+    except Exception as e:
+        return f"ERR:{e}"
+
+
+async def _target_still_alive(target):
+    """يتحقق هل الهدف لم يُحظر بعد من تيليجرام (مثل .فحص).
+    يرجع (True, entity) إن لم يُحظر، أو (False, رسالة_السبب) إن حُظر/انتهى/مفقود."""
+    try:
+        ent = await _ai_resolve_ent(target)
+        if ent is None:
+            return False, "❌ تعذّر إيجاد الهدف (ممكن محظور أو محذوف)"
+        # تحقق إضافي: هل القناة/المجموعة فعلاً قابلة للوصول
+        try:
+            await client.get_permissions(ent) if getattr(ent, "megagroup", False) or getattr(ent, "broadcast", False) else None
+        except Exception:
+            pass
+        return True, ent
+    except Exception as e:
+        err = str(e)
+        if any(k in err for k in ("banned", "deactivated", "not exist", "notExist", "You can't", "CHANNEL_PRIVATE", "USER_BANNED_IN_CHANNEL", "timeout")):
+            return False, f"⛔ الهدف محظور/غير متاح الآن: {err}"
+        return False, f"⛔ خطأ في فحص الهدف: {err}"
+
+
+@cmd(r"شد_هدف(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    cfg = _report_settings()
+    cfg["target"] = arg
+    db_write("report_cfg", cfg)
+    await edit_or_reply(event, f"✅ تم ضبط الهدف: {arg or 'لايوجد'}")
+
+
+@cmd(r"شد_نوع(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg:
+        return await edit_delete(event, f"- اكتب: {PREFIX}شد_نوع <نوع>", 8)
+    if arg.lower() not in REPORT_REASONS:
+        return await edit_or_reply(event, "❌ نوع غير معروف. الأنواع: " + ", ".join(REPORT_REASONS.keys()))
+    cfg = _report_settings()
+    cfg["reason"] = arg.lower()
+    db_write("report_cfg", cfg)
+    await edit_or_reply(event, f"✅ تم ضبط نوع البلاغ: {arg}")
+
+
+@cmd(r"شد_رساله(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg:
+        return await edit_delete(event, f"- اكتب: {PREFIX}شد_رساله <نص البلاغ>", 8)
+    cfg = _report_settings()
+    cfg["message"] = arg
+    db_write("report_cfg", cfg)
+    await edit_or_reply(event, f"✅ تم ضبط رسالة البلاغ:\n{arg}")
+
+
+@cmd(r"شد_سرعه(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg.isdigit():
+        return await edit_delete(event, f"- اكتب: {PREFIX}شد_سرعه <ثواني التأخير>", 8)
+    cfg = _report_settings()
+    cfg["speed"] = max(1, min(int(arg), 60))
+    db_write("report_cfg", cfg)
+    await edit_or_reply(event, f"✅ سرعة البلاغ (تأخير): {cfg['speed']} ثانية")
+
+
+@cmd(r"شد_ايقاف$")
+async def _(event):
+    cfg = _report_settings()
+    cfg["running"] = False
+    db_write("report_cfg", cfg)
+    await edit_or_reply(event, "⏹️ تم طلب إيقاف البلاغ المستمر")
+
+
+@cmd(r"شد_اعداد$")
+async def _(event):
+    cfg = _report_settings()
+    await edit_or_reply(
+        event,
+        f"**◂ إعدادات الشد الداخلي:**\n"
+        f"الهدف: {cfg['target'] or 'لايوجد'}\n"
+        f"النوع: {cfg['reason']}\n"
+        f"الرسالة: {cfg['message']}\n"
+        f"السرعة: {cfg['speed']} ثانية\n"
+        f"يعمل الآن: {'نعم' if cfg['running'] else 'لا'}\n\n"
+        f"الأوامر:\n"
+        f"`{PREFIX}شد_هدف` <رابط/يوزر>\n"
+        f"`{PREFIX}شد_نوع` <نوع>\n"
+        f"`{PREFIX}شد_رساله` <نص>\n"
+        f"`{PREFIX}شد_سرعه` <ثواني>\n"
+        f"`{PREFIX}شد` ◂ يبدأ البلاغ المستمر\n"
+        f"`{PREFIX}شد_ايقاف` ◂ يوقفه",
+    )
+
+
+@cmd(r"شد(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    cfg = _report_settings()
+    target = arg or cfg["target"]
+    if not target:
+        return await edit_delete(event, f"- اكتب: {PREFIX}شد <رابط/يوزر/آيدي> (أو ضع هدفاً بـ {PREFIX}شد_هدف)", 8)
+    cfg["target"] = target
+    cfg["running"] = True
+    db_write("report_cfg", cfg)
+    m = await event.edit(
+        f"🚨 بدء البلاغ المستمر على:\n{target}\nالنوع: {cfg['reason']}\nالسرعة: {cfg['speed']}ث\n"
+        f"(سيُوقف تلقائياً إذا حُظر الهدف — أو بـ {PREFIX}شد_ايقاف)"
+    )
+    sent = 0
+    err_count = 0
+    while True:
+        cfg = _report_settings()
+        if not cfg.get("running", False):
+            await edit_or_reply(m, f"⏹️ تم الإيقاف بطلبك.\n📊 بلاغات مُرسلة: {sent}")
+            return
+        # فحص كل دورة: هل الهدف لم يُحظر بعد؟
+        alive, res = await _target_still_alive(target)
+        if not alive:
+            await edit_or_reply(m, f"⛔ توقّف البلاغ تلقائياً:\n{res}\n📊 بلاغات مُرسلة: {sent}")
+            cfg = _report_settings()
+            cfg["running"] = False
+            db_write("report_cfg", cfg)
+            return
+        ent = res
+        r = await _do_report(ent, cfg["reason"], cfg["message"])
+        if r is True:
+            sent += 1
+            err_count = 0
+            try:
+                await m.edit(f"🚨 بلاغ مستمر...\n📊 مُرسل: {sent}\nالنوع: {cfg['reason']}\nالسرعة: {cfg['speed']}ث")
+            except Exception:
+                pass
+        else:
+            err_count += 1
+            # أخطاء متتالية قد تعني حظر الحساب أو الهدف
+            await edit_or_reply(m, f"⚠️ خطأ في البلاغ ({err_count}): {r}\n📊 مُرسل: {sent}")
+            if err_count >= 5:
+                cfg = _report_settings()
+                cfg["running"] = False
+                db_write("report_cfg", cfg)
+                return await edit_or_reply(m, f"⛔ توقّف بعد أخطاء متتالية.\n📊 بلاغات مُرسلة: {sent}")
+        await asyncio.sleep(cfg["speed"])
 
 
 # ============================================================

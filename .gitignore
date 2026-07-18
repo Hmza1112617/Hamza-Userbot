@@ -7,6 +7,7 @@ data/warns.json
 data/pm_counts.json
 bot.log
 data/source_info.txt
+data/report_cfg.json
 __pycache__/
 *.pyc
 *.session
