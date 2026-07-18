@@ -2948,10 +2948,11 @@ async def _(event):
 **الحساب:** {get_display_name(me)}
 **البادئة:** `{PREFIX}`
 **مدة التشغيل:** {up}
-**المكتبة:** Telethon
-**التخزين:** JSON
+ **المكتبة:** Telethon
+ **التخزين:** JSON
 
-لعرض الأوامر أرسل `{PREFIX}الاوامر`"""
+ لعرض الأوامر أرسل `{PREFIX}الاوامر`
+ للتحديثات والتحسينات اشترك: https://t.me/acjava"""
         return await edit_or_reply(event, txt)
     m = await event.edit("🔍 جاري الفحص...")
     res = await _bc_check(arg)
