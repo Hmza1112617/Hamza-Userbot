@@ -2800,10 +2800,10 @@ async def _(event):
         # حفظ مكان الرسالة لإرسال تأكيد بعد إعادة التشغيل
         db_set("settings", "restart_chat", event.chat_id)
         db_set("settings", "restart_msg", event.id)
-        # سحب آخر تغييرات
+        # سحب آخر تغييرات (مع تجاوز تحذير ملكية المجلد لي works للكل)
         proc = await asyncio.to_thread(
             subprocess.run,
-            ["git", "pull", "origin", "clean-main"],
+            ["git", "-c", "safe.directory=*", "pull", "origin", "clean-main"],
             cwd=BASE_DIR, capture_output=True, text=True, timeout=120,
         )
         out = (proc.stdout or proc.stderr or "")[:1500]
@@ -2853,6 +2853,14 @@ async def _ai_auto_watcher(event):
 
 async def _startup():
     global flood_guard
+    # ضبط safe.directory تلقائياً ليتجنّب خطأ dubious ownership لأي مستخدم
+    try:
+        subprocess.run(
+            ["git", "config", "--global", "--add", "safe.directory", BASE_DIR],
+            cwd=BASE_DIR, capture_output=True, timeout=20,
+        )
+    except Exception:
+        pass
     me = await client.get_me()
     _load_insults()
     build_source_info()
