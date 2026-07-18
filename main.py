@@ -54,10 +54,14 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 def load_config():
     if not os.path.exists(CONFIG_FILE):
-        print("لا يوجد ملف config.json | انسخ config.example.json الى config.json واملأه")
-        sys.exit(1)
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
+        # لا يوجد ملف — أنشئه واطلب البيانات
+        cfg = {}
+    else:
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+        except Exception:
+            cfg = {}
     cfg["API_ID"] = int(cfg.get("API_ID") or os.environ.get("API_ID") or 0)
     cfg["API_HASH"] = cfg.get("API_HASH") or os.environ.get("API_HASH") or ""
     cfg["STRING_SESSION"] = (
@@ -65,10 +69,41 @@ def load_config():
     )
     cfg["PREFIX"] = cfg.get("PREFIX") or "."
     cfg["OWNER_NAME"] = cfg.get("OWNER_NAME") or "حمزة"
+    # طلب البيانات تفاعلياً عند أول تشغيل
     if not cfg["API_ID"] or not cfg["API_HASH"]:
-        print("املأ API_ID و API_HASH في config.json")
-        sys.exit(1)
+        print("=" * 45)
+        print("  إعداد سورس حمزة — أدخل بياناتك:")
+        print("=" * 45)
+        try:
+            aid = input("🔑 API_ID: ").strip()
+            ahash = input("🔑 API_HASH: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("تم الإلغاء")
+            sys.exit(1)
+        cfg["API_ID"] = int(aid) if aid.isdigit() else 0
+        cfg["API_HASH"] = ahash
+        if not cfg["API_ID"] or not cfg["API_HASH"]:
+            print("بيانات غير صحيحة")
+            sys.exit(1)
+        # حفظ ما أُدخل (رقم الهاتف يُطلب أثناء تسجيل الدخول)
+        _save_cfg_basic(cfg)
+        print("✓ تم حفظ API_ID و API_HASH")
     return cfg
+
+
+def _save_cfg_basic(cfg):
+    try:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+    data["API_ID"] = cfg["API_ID"]
+    data["API_HASH"] = cfg["API_HASH"]
+    data["PREFIX"] = cfg["PREFIX"]
+    data["OWNER_NAME"] = cfg["OWNER_NAME"]
+    data["STRING_SESSION"] = cfg.get("STRING_SESSION", "")
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
 
 def save_session(session_str):
@@ -2803,20 +2838,40 @@ async def _startup():
 
 def main():
     new_login = not CONFIG["STRING_SESSION"]
+    phone = ""
     if new_login:
         print("=" * 45)
         print("  لا يوجد كود سيشن — سيتم تسجيل الدخول الآن")
-        print("  أدخل رقم هاتفك مع رمز الدولة (مثال: +9647...)")
+        print("  أدخل رقم هاتفك مع رمز الدولة (مثال: +96478...)")
         print("=" * 45)
-    client.start()
+        try:
+            phone = input("📱 رقم الهاتف: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("تم الإلغاء")
+            sys.exit(1)
+        if not phone.startswith("+"):
+            phone = "+" + phone.lstrip("+")
+    try:
+        if new_login and phone:
+            client.start(phone=lambda: phone)
+        else:
+            client.start()
+    except Exception as e:
+        print(f"خطأ بتسجيل الدخول: {e}")
+        # محاولة تفاعلية كاحتياط
+        if new_login:
+            client.start()
     # حفظ كود السيشن المولّد تلقائياً بعد أول تسجيل دخول
     if new_login:
-        session_str = client.session.save()
-        save_session(session_str)
-        print("=" * 45)
-        print("  تم تسجيل الدخول وحفظ كود السيشن تلقائياً ✓")
-        print("  لن يُطلب منك تسجيل الدخول مرة أخرى")
-        print("=" * 45)
+        try:
+            session_str = client.session.save()
+            save_session(session_str)
+            print("=" * 45)
+            print("  تم تسجيل الدخول وحفظ كود السيشن تلقائياً ✓")
+            print("  لن يُطلب منك تسجيل الدخول مرة أخرى")
+            print("=" * 45)
+        except Exception:
+            pass
     client.loop.run_until_complete(_startup())
     client.run_until_disconnected()
 
