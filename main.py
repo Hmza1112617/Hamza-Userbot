@@ -2738,12 +2738,15 @@ async def _(event):
 GITHUB_REPO = "Hmza1112617/Hamza-Userbot"  # مستودع السورس
 
 
-async def _github_get(path):
-    """طلب متزامن لـ GitHub API"""
+def _github_get(path):
+    """طلب متزامن لـ GitHub API (يُشغَّل داخل thread)"""
     import urllib.request
 
     url = f"https://api.github.com/repos/{GITHUB_REPO}/{path}"
-    req = urllib.request.Request(url, headers={"User-Agent": "HamzaUserbot", "Accept": "application/vnd.github+json"})
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "HamzaUserbot", "Accept": "application/vnd.github+json"},
+    )
     with urllib.request.urlopen(req, timeout=20) as r:
         return json.loads(r.read().decode("utf-8", "ignore"))
 
