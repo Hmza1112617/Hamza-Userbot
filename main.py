@@ -385,7 +385,8 @@ MENU_MAIN = f"""**[ سورس حمزة ]**
 `{PREFIX}م12` ◂ أوامر الصيغ
 `{PREFIX}م13` ◂ أوامر التسلية
 `{PREFIX}م14` ◂ أوامر التحكم
-`{PREFIX}م15` ◂ أوامر الذكاء الاصطناعي"""
+`{PREFIX}م15` ◂ أوامر الذكاء الاصطناعي
+`{PREFIX}م16` ◂ أوامر التحديثات"""
 
 MENU = {
     "م1": """**◂ أوامر الإدارة :**
@@ -503,6 +504,11 @@ MENU = {
 `{p}تعليمات الذكاء` ◂ عرض التعليمات | `<نص>` تعديل | `افتراضي` إرجاع
 
 ملاحظة: في الوضع الشامل يكتب الذكاء استدعاء أداة JSON (بما فيها raw_tl بلا قيود) فينفّذها الكود ويعرض النتيجة ويتابع المحادثة.""",
+    "م16": """**◂ أوامر التحديثات :**
+
+`{p}تحديث` ◂ لتنزيل آخر تحديث من GitHub وإعادة التشغيل
+`{p}تحديثات` ◂ لعرض آخر التحديثات والإضافات من GitHub
+`{p}اخر_تحديث` ◂ لعرض آخر إصدار منشور""",
 }
 
 
@@ -2780,6 +2786,41 @@ async def _(event):
         await edit_or_reply(m, f"**◂ آخر إصدار:** `{name}`\n\n{notes}\n\nرابط: {rel.get('html_url','')}")
     except Exception as e:
         await edit_or_reply(m, f"- لا يوجد إصدار بعد أو خطأ: `{e}`")
+
+
+import subprocess
+
+RESTART_CMD = [sys.executable, os.path.abspath(__file__)]
+
+
+@cmd(r"تحديث$")
+async def _(event):
+    m = await event.edit("🔄 جاري تنزيل التحديث من GitHub...")
+    try:
+        # حفظ مكان الرسالة لإرسال تأكيد بعد إعادة التشغيل
+        db_set("settings", "restart_chat", event.chat_id)
+        db_set("settings", "restart_msg", event.id)
+        # سحب آخر تغييرات
+        proc = await asyncio.to_thread(
+            subprocess.run,
+            ["git", "pull", "origin", "clean-main"],
+            cwd=BASE_DIR, capture_output=True, text=True, timeout=120,
+        )
+        out = (proc.stdout or proc.stderr or "")[:1500]
+        if proc.returncode != 0:
+            await m.edit(f"- فشل السحب:\n`{out}`")
+            # تنظيف مؤشر إعادة التشغيل
+            s = db_read("settings")
+            s.pop("restart_chat", None)
+            s.pop("restart_msg", None)
+            db_write("settings", s)
+            return
+        await m.edit(f"✅ تم تنزيل التحديث:\n`{out}`\n🔁 جاري إعادة التشغيل...")
+        await asyncio.sleep(1.5)
+        # إعادة تشغيل السورس
+        os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
+    except Exception as e:
+        await edit_or_reply(m, f"- خطأ بالتحديث: `{e}`")
 
 
 @client.on(events.NewMessage(incoming=True))
