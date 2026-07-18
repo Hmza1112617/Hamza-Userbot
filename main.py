@@ -3251,7 +3251,7 @@ def _time_digit_style():
 
 
 def _format_time_decorated():
-    now = datetime.datetime.now()
+    now = datetime.now()
     h12 = now.hour % 12
     if h12 == 0:
         h12 = 12
@@ -3276,7 +3276,7 @@ async def _time_loop():
             await client(functions.account.UpdateProfileRequest(last_name=t))
         except Exception:
             pass
-        now = datetime.datetime.now()
+        now = datetime.now()
         sleep_s = 60 - now.second - now.microsecond / 1_000_000
         if sleep_s <= 0:
             sleep_s = 60.0
