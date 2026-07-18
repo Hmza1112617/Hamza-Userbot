@@ -1,6 +1,6 @@
 {
-    "API_ID": 1234567,
-    "API_HASH": "your_api_hash_here",
+    "API_ID": 0,
+    "API_HASH": "",
     "STRING_SESSION": "",
     "OWNER_NAME": "حمزة",
     "PREFIX": "."

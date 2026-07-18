@@ -78,6 +78,12 @@ def load_config():
             cfg = {}
     cfg["API_ID"] = int(cfg.get("API_ID") or os.environ.get("API_ID") or 0)
     cfg["API_HASH"] = cfg.get("API_HASH") or os.environ.get("API_HASH") or ""
+    # اعتبار القيم الوهمية/الافتراضية كأنها مفقودة
+    _PLACEHOLDER_HASHES = ("", "your_api_hash_here", "YOUR_API_HASH_HERE", "0123456789abcdef0123456789abcdef")
+    if cfg["API_HASH"].strip() in _PLACEHOLDER_HASHES:
+        cfg["API_HASH"] = ""
+    if cfg["API_ID"] in (0, 1234567):
+        cfg["API_ID"] = 0
     cfg["STRING_SESSION"] = (
         cfg.get("STRING_SESSION") or os.environ.get("STRING_SESSION") or ""
     )
@@ -3358,6 +3364,7 @@ async def _startup():
 
 
 def main():
+    global client
     new_login = not CONFIG["STRING_SESSION"]
     phone = ""
     if new_login:
@@ -3378,10 +3385,41 @@ def main():
         else:
             client.start()
     except Exception as e:
-        print(f"خطأ بتسجيل الدخول: {e}")
-        # محاولة تفاعلية كاحتياط
-        if new_login:
-            client.start()
+        err = str(e)
+        # إذا كانت بيانات api_id/api_hash خاطئة أعد طلبها تفاعلياً
+        if "api_id/api_hash" in err or "API_ID_PUBLISHED" in err or "API_ID_INVALID" in err:
+            print("✗ البيانات (API_ID/API_HASH) غير صحيحة.")
+            print("  أدخل بياناتك الصحيحة من https://my.telegram.org/apps")
+            try:
+                aid = input("🔑 API_ID: ").strip()
+                ahash = input("🔑 API_HASH: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print("تم الإلغاء")
+                sys.exit(1)
+            if aid.isdigit() and ahash:
+                CONFIG["API_ID"] = int(aid)
+                CONFIG["API_HASH"] = ahash
+                _save_cfg_basic(CONFIG)
+                # إعادة بناء العميل بالقيم الجديدة
+                client = TelegramClient(
+                    StringSession(CONFIG["STRING_SESSION"]),
+                    CONFIG["API_ID"],
+                    CONFIG["API_HASH"],
+                    app_version="حمزة 1.0",
+                    auto_reconnect=True,
+                    connection_retries=None,
+                )
+                if new_login and phone:
+                    client.start(phone=lambda: phone)
+                else:
+                    client.start()
+            else:
+                print("بيانات غير صحيحة — أغلق وأعد التشغيل")
+                sys.exit(1)
+        else:
+            print(f"خطأ بتسجيل الدخول: {e}")
+            if new_login:
+                client.start()
     # حفظ كود السيشن المولّد تلقائياً بعد أول تسجيل دخول
     if new_login:
         try:
