@@ -1,0 +1,21 @@
+# ملفات حساسة — لا تُرفع أبداً
+config.json
+data/ai_mem.json
+data/settings.json
+data/replies.json
+data/warns.json
+data/pm_counts.json
+bot.log
+data/source_info.txt
+__pycache__/
+*.pyc
+*.session
+.env
+.venv/
+venv/
+
+# ملفات البيانات الآمنة المسموح رفعها (غير حساسة)
+!data/insults.json
+!data/ai_tools.json
+!data/ai.json
+

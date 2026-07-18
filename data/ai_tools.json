@@ -1,0 +1,208 @@
+[
+  {
+    "name": "send_message",
+    "description": "إرسال رسالة نصية إلى أي مستخدم أو مجموعة أو قناة (بالمعرف @username أو الرقم أو id)",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "target": {"type": "string", "description": "المعرف @username أو الرقم أو id الهدف"},
+        "text": {"type": "string", "description": "نص الرسالة"}
+      },
+      "required": ["target", "text"]
+    }
+  },
+  {
+    "name": "block_user",
+    "description": "حظر مستخدم من حسابك (بالرقم أو المعرف أو id)",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "target": {"type": "string", "description": "الرقم أو @username أو id المراد حظره"}
+      },
+      "required": ["target"]
+    }
+  },
+  {
+    "name": "unblock_user",
+    "description": "إلغاء حظر مستخدم",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "target": {"type": "string", "description": "الرقم أو @username أو id"}
+      },
+      "required": ["target"]
+    }
+  },
+  {
+    "name": "kick_user",
+    "description": "طرد عضو من مجموعة (بحاجة صلاحية)",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user": {"type": "string", "description": "العضو @username أو id أو رقم"},
+        "chat": {"type": "string", "description": "المجموعة @username أو id"}
+      },
+      "required": ["user", "chat"]
+    }
+  },
+  {
+    "name": "ban_chat_member",
+    "description": "حظر عضو من مجموعة/قناة (يمنعه من العودة)",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user": {"type": "string", "description": "العضو"},
+        "chat": {"type": "string", "description": "المجموعة/القناة"}
+      },
+      "required": ["user", "chat"]
+    }
+  },
+  {
+    "name": "pin_message",
+    "description": "تثبيت رسالة في المحادثة الحالية (استخدم مع رد على الرسالة)",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "chat_id": {"type": "integer", "description": "id المحادثة"},
+        "message_id": {"type": "integer", "description": "id الرسالة"}
+      },
+      "required": ["chat_id", "message_id"]
+    }
+  },
+  {
+    "name": "read_messages",
+    "description": "قراءة آخر رسائل من محادثة معينة",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "target": {"type": "string", "description": "المحادثة @username أو id"},
+        "limit": {"type": "integer", "description": "عدد الرسائل (افتراضي 5)"}
+      },
+      "required": ["target"]
+    }
+  },
+  {
+    "name": "delete_messages",
+    "description": "حذف/مسح رسائل أو محادثة كاملة",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "target": {"type": "string", "description": "المحادثة @username أو id للمسح الكامل"},
+        "message_ids": {"type": "array", "items": {"type": "integer"}, "description": "قائمة معرّفات رسائل للحذف (اختياري)"},
+        "revoke": {"type": "boolean", "description": "حذف للطرفين (افتراضي true)"}
+      },
+      "required": ["target"]
+    }
+  },
+  {
+    "name": "get_me",
+    "description": "جلب معلومات حساب المالك (الاسم، المعرف، الآيدي، الهاتف، بريميوم)",
+    "parameters": {"type": "object", "properties": {}, "required": []}
+  },
+  {
+    "name": "get_user",
+    "description": "جلب معلومات أي مستخدم (الاسم، المعرف، البايو، بريميوم، موثّق)",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "target": {"type": "string", "description": "الرقم أو @username أو id"}
+      },
+      "required": ["target"]
+    }
+  },
+  {
+    "name": "list_dialogs",
+    "description": "عرض قائمة محادثات/مجموعات الحساب",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {"type": "integer", "description": "العدد (افتراضي 25)"}
+      }
+    }
+  },
+  {
+    "name": "resolve_username",
+    "description": "البحث عن مستخدم أو قناة بواسطة @username وإرجاع بياناته",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "username": {"type": "string", "description": "@username بدون @"}
+      },
+      "required": ["username"]
+    }
+  },
+  {
+    "name": "create_group",
+    "description": "إنشاء مجموعة/قناة جديدة",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {"type": "string", "description": "اسم المجموعة"},
+        "about": {"type": "string", "description": "وصف (اختياري)"},
+        "broadcast": {"type": "boolean", "description": "true=قناة، false=مجموعة (افتراضي false)"}
+      },
+      "required": ["title"]
+    }
+  },
+  {
+    "name": "invite_to_chat",
+    "description": "دعوة/إضافة عضو إلى مجموعة",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user": {"type": "string", "description": "العضو @username أو id أو رقم"},
+        "chat": {"type": "string", "description": "المجموعة @username أو id"}
+      },
+      "required": ["user", "chat"]
+    }
+  },
+  {
+    "name": "update_profile",
+    "description": "تعديل بروفايل المالك (الاسم/النبذة)",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "first_name": {"type": "string", "description": "الاسم الأول"},
+        "last_name": {"type": "string", "description": "الاسم الأخير"},
+        "about": {"type": "string", "description": "النبذة/البايو"}
+      }
+    }
+  },
+  {
+    "name": "leave_chat",
+    "description": "مغادرة مجموعة أو قناة",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "chat": {"type": "string", "description": "المجموعة/القناة @username أو id"}
+      },
+      "required": ["chat"]
+    }
+  },
+  {
+    "name": "forward_message",
+    "description": "توجيه رسالة من محادثة إلى أخرى",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "from_chat": {"type": "string", "description": "مصدر الرسالة @username أو id"},
+        "message_id": {"type": "integer", "description": "id الرسالة"},
+        "to_chat": {"type": "string", "description": "الوجهة @username أو id"}
+      },
+      "required": ["from_chat", "message_id", "to_chat"]
+    }
+  },
+  {
+    "name": "raw_tl",
+    "description": "تنفيذ أي استدعاء Telethon TL خام بحرية تامة (بلا قيود). مرّر اسم الدالة والمعطيات كما هي",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "namespace": {"type": "string", "description": "مثل: contacts, channels, messages, users, account, photos"},
+        "method": {"type": "string", "description": "اسم الدالة بالضبط مثلا Block, GetFullUser, EditBanned"},
+        "params": {"type": "object", "description": "معطيات الدالة بصيغة JSON حرفية"}
+      },
+      "required": ["namespace", "method", "params"]
+    }
+  }
+]
