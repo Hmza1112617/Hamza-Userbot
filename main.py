@@ -19,6 +19,7 @@ import sys
 import time
 import zlib
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 try:
     import brotli
@@ -549,10 +550,11 @@ MENU = {
 
     "م18": """**◂ الاسم الوقتي (وقت حي بجانب اسمك):**
 
-`{p}وقتي` ◂ عرض الحالة والمعاينة
+`{p}وقتي` ◂ عرض الحالة والمعاينة والتوقيت
 `{p}وقتي تشغيل` ◂ يفعّل التحديث التلقائي كل دقيقة
 `{p}وقتي ايقاف` ◂ يوقفه
-`{p}وقتي شكل <رقم>` ◂ يختار شكل زخرفة الأرقام (اكتب `.وقتي شكل` لعرض القائمة)""",
+`{p}وقتي شكل <رقم>` ◂ يختار شكل زخرفة الأرقام (مع أمثلة حية)
+`{p}وقتي توقيت <بلد/مدينة>` ◂ يختار التوقيت (بغداد/السعودية/مصر/لندن/...)""",
 }
 
 
@@ -3243,6 +3245,43 @@ DIGIT_SETS = {
     36: {"name": "مونو (Monospace)", "map": "𝟶𝟷𝟸𝟹𝟺𝟻𝟼𝟽𝟾𝟿"},
 }
 
+# مناطق زمنية شائعة (الاسم المعروض : مفتاح zoneinfo)
+TIME_ZONES = {
+    "بغداد": "Asia/Baghdad",
+    "العراق": "Asia/Baghdad",
+    "السعودية": "Asia/Riyadh",
+    "مكة": "Asia/Riyadh",
+    "الكويت": "Asia/Kuwait",
+    "مصر": "Africa/Cairo",
+    "القاهرة": "Africa/Cairo",
+    "الاردن": "Asia/Amman",
+    "سوريا": "Asia/Damascus",
+    "لبنان": "Asia/Beirut",
+    "اليمن": "Asia/Aden",
+    "المغرب": "Africa/Casablanca",
+    "الجزائر": "Africa/Algiers",
+    "تونس": "Africa/Tunis",
+    "ليبيا": "Africa/Tripoli",
+    "تركيا": "Europe/Istanbul",
+    "دبي": "Asia/Dubai",
+    "قطر": "Asia/Qatar",
+    "فلسطين": "Asia/Hebron",
+    "السودان": "Africa/Khartoum",
+    "الصومال": "Africa/Mogadishu",
+    "لندن": "Europe/London",
+    "باريس": "Europe/Paris",
+    "نيويورك": "America/New_York",
+    "لوس_انجلوس": "America/Los_Angeles",
+    "موسكو": "Europe/Moscow",
+    "طهران": "Asia/Tehran",
+    "اسلام_اباد": "Asia/Karachi",
+    "جاكرتا": "Asia/Jakarta",
+    "طوكيو": "Asia/Tokyo",
+    "سيدني": "Australia/Sydney",
+    "الهند": "Asia/Kolkata",
+    "جنوب_افريقيا": "Africa/Johannesburg",
+}
+
 _time_task = None  # مرجع مهمة الحلقة
 
 
@@ -3250,8 +3289,39 @@ def _time_digit_style():
     return db_get("settings", "time_digit_style", 0)
 
 
+def _time_zone_key():
+    return db_get("settings", "time_zone", "Asia/Baghdad")
+
+
+def _resolve_zone(arg):
+    """يحوّل اسم بلد/مدينة أو مفتاح zoneinfo إلى مفتاح صالح"""
+    a = (arg or "").strip()
+    if not a:
+        return None
+    # مطابقة مباشرة بقائمتنا
+    if a in TIME_ZONES:
+        return TIME_ZONES[a]
+    if a in TIME_ZONES.values():
+        return a
+    # بحث جزئي بالعربي
+    for name, key in TIME_ZONES.items():
+        if name in a or a in name:
+            return key
+    # التحقق هل هو zoneinfo صالح
+    try:
+        ZoneInfo(a)
+        return a
+    except Exception:
+        return None
+
+
 def _format_time_decorated():
-    now = datetime.now()
+    zk = _time_zone_key()
+    try:
+        tz = ZoneInfo(zk)
+        now = datetime.now(tz)
+    except Exception:
+        now = datetime.now()
     h12 = now.hour % 12
     if h12 == 0:
         h12 = 12
@@ -3298,15 +3368,51 @@ async def _(event):
     await edit_or_reply(event, "⏹️ تم إيقاف الاسم الوقتي")
 
 
+@cmd(r"وقتي توقيت(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg:
+        cur = _time_zone_key()
+        names = [n for n, k in TIME_ZONES.items() if k == cur]
+        label = (" / ".join(names)) if names else cur
+        # عينة من البلدان الشائعة
+        sample = "\n".join(f"• `{n}` ⟶ `{k}`" for n, k in list(TIME_ZONES.items())[:12])
+        return await edit_or_reply(
+            event,
+            f"**◂ اختيار التوقيت (المنطقة الزمنية):**\nالحالي: {label} ({cur})\n\n"
+            f"**أمثلة البلدان:**\n{sample}\n… وغيرها الكثير (أو اكتب مفتاح zoneinfo مباشرة مثل `Europe/London`)\n\n"
+            f"للتغيير: `{PREFIX}وقتي توقيت <اسم البلد/المدينة>`\nمثال: `{PREFIX}وقتي توقيت بغداد`",
+        )
+    zk = _resolve_zone(arg)
+    if not zk:
+        return await edit_or_reply(
+            event,
+            "❌ لم أتعرّف على هذه المنطقة.\nاكتب `.وقتي توقيت` لعرض قائمة البلدان المتاحة، "
+            "أو استخدم مفتاح zoneinfo صحيح مثل `Asia/Baghdad`.",
+        )
+    db_set("settings", "time_zone", zk)
+    preview = _format_time_decorated()
+    names = [n for n, k in TIME_ZONES.items() if k == zk]
+    label = (" / ".join(names)) if names else zk
+    await edit_or_reply(event, f"✅ تم ضبط التوقيت: {label} ({zk})\nالمعاينة الآن: {preview}")
+
+
 @cmd(r"وقتي شكل(?:\s|$)([\s\S]*)")
 async def _(event):
     arg = (event.pattern_match.group(1) or "").strip()
     if not arg.isdigit():
-        lines = "\n".join(f"`{k}` ◂ {v['name']}" for k, v in DIGIT_SETS.items())
+        # عرض كل شكل مع مثال حي من الوقت الحالي
+        lines = []
+        for k, v in DIGIT_SETS.items():
+            ds_backup = _time_digit_style()
+            db_set("settings", "time_digit_style", k)
+            ex = _format_time_decorated()
+            db_set("settings", "time_digit_style", ds_backup)
+            lines.append(f"`{k}` ◂ {v['name']}  ⟶  `{ex}`")
         return await edit_or_reply(
             event,
-            f"**◂ أشكال أرقام الاسم الوقتي:**\n{lines}\n\n"
-            f"للاختيار: `{PREFIX}وقتي شكل <رقم>`\nالحالي: {_time_digit_style()}",
+            f"**◂ أشكال أرقام الاسم الوقتي (مع أمثلة حية):**\n" + "\n".join(lines) +
+            f"\n\nللاختيار: `{PREFIX}وقتي شكل <رقم>`\nالحالي: {_time_digit_style()}",
         )
     k = int(arg)
     if k not in DIGIT_SETS:
@@ -3320,12 +3426,17 @@ async def _(event):
 async def _(event):
     preview = _format_time_decorated()
     active = db_get("settings", "time_active", False)
+    zk = _time_zone_key()
+    names = [n for n, k in TIME_ZONES.items() if k == zk]
+    label = (" / ".join(names)) if names else zk
     await edit_or_reply(
         event,
         f"**◂ الاسم الوقتي:**\nالحالة: {'✅ شغال' if active else '⛔ متوقف'}\n"
         f"الشكل: {DIGIT_SETS.get(_time_digit_style(), DIGIT_SETS[0])['name']}\n"
+        f"التوقيت: {label} ({zk})\n"
         f"المعاينة: {preview}\n\n"
-        f"الأوامر:\n`{PREFIX}وقتي تشغيل`\n`{PREFIX}وقتي ايقاف`\n`{PREFIX}وقتي شكل <رقم>`",
+        f"الأوامر:\n`{PREFIX}وقتي تشغيل`\n`{PREFIX}وقتي ايقاف`\n"
+        f"`{PREFIX}وقتي شكل <رقم>`\n`{PREFIX}وقتي توقيت <بلد/مدينة>`",
     )
 
 
