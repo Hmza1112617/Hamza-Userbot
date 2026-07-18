@@ -32,14 +32,28 @@ from telethon.errors import (
     MessageIdInvalidError,
     MessageNotModifiedError,
     UserAdminInvalidError,
+    UsernameNotOccupiedError,
+    ChannelPrivateError,
+    ChannelBannedError,
+    UserIdInvalidError,
+    InviteHashExpiredError,
+    InviteHashInvalidError,
+    UserBannedInChannelError,
+    UsersTooMuchError,
 )
 from telethon.sessions import StringSession
 from telethon.tl.functions.channels import EditAdminRequest, EditBannedRequest
 from telethon.tl.functions.contacts import BlockRequest, UnblockRequest
+from telethon.tl.functions.messages import CheckChatInviteRequest, ImportChatInviteRequest
 from telethon.tl.types import (
     ChatAdminRights,
     ChatBannedRights,
     MessageEntityMentionName,
+    ChatInvite,
+    ChatInviteAlready,
+    User,
+    Channel,
+    Chat,
 )
 
 # ============================================================
@@ -386,7 +400,8 @@ MENU_MAIN = f"""**[ سورس حمزة ]**
 `{PREFIX}م13` ◂ أوامر التسلية
 `{PREFIX}م14` ◂ أوامر التحكم
 `{PREFIX}م15` ◂ أوامر الذكاء الاصطناعي
-`{PREFIX}م16` ◂ أوامر التحديثات"""
+`{PREFIX}م16` ◂ أوامر التحديثات
+`{PREFIX}م17` ◂ باند و شد (فحص الروابط)"""
 
 MENU = {
     "م1": """**◂ أوامر الإدارة :**
@@ -509,6 +524,12 @@ MENU = {
 `{p}تحديث` ◂ لتنزيل آخر تحديث من GitHub وإعادة التشغيل
 `{p}تحديثات` ◂ لعرض آخر التحديثات والإضافات من GitHub
 `{p}اخر_تحديث` ◂ لعرض آخر إصدار منشور""",
+    "م17": """**◂ باند و شد (فحص الروابط والمجموعات):**
+
+`{p}فحص` <رابط/يوزر/آيدي> ◂ لفحص إن كان محظوراً/منتهياً/سكام
+`{p}فحص_دفعه` <رابط> ◂ فحص دعوة (ينضم مؤقتاً ويفحص)
+`{p}فحص_مجموعه` ◂ فحص المجموعة الحالية
+ملاحظة: يكشف انتهاك شروط تيليجرام (TOOLTIP) والحظر والروابط الوهمية.""",
 }
 
 
@@ -2735,6 +2756,211 @@ async def _(event):
         await edit_or_reply(m, answer + "\n\n__محادثة مستمرة — اكتب .ذكاء للمتابعة/التصحيح__")
     except Exception as e:
         await edit_or_reply(m, f"- خطأ بالذكاء: `{e}`")
+
+
+# ============================================================
+# ============================================================
+#              باند و شد | BANNED CHECKER
+# ============================================================
+
+
+def _bc_extract(text):
+    text = (text or "").strip().replace("https://", "").replace("http://", "")
+    if "+" in text or "/joinchat/" in text:
+        return ("invite", text.split("+")[-1].split("/")[-1])
+    m = _re.match(r"t\.me/(.+?)(?:/|$)", text)
+    if m:
+        return ("username", m.group(1))
+    if text.startswith("@"):
+        return ("username", text[1:])
+    if _re.match(r"^-?\d+$", text):
+        return ("chat_id", int(text))
+    if text:
+        return ("username", text)
+    return None
+
+
+def _bc_name(entity):
+    if isinstance(entity, User):
+        return (getattr(entity, "first_name", "") + " " + getattr(entity, "last_name", "")).strip()
+    return getattr(entity, "title", "") or str(getattr(entity, "id", "?"))
+
+
+def _bc_type(entity):
+    if isinstance(entity, User):
+        return "user"
+    if getattr(entity, "broadcast", False):
+        return "channel"
+    if getattr(entity, "megagroup", False):
+        return "group"
+    return "chat"
+
+
+def _bc_tos(entity, name=None):
+    if name is None:
+        name = _bc_name(entity)
+    for r in (getattr(entity, "restriction_reason", []) or []):
+        if getattr(r, "reason", "") == "terms":
+            return (
+                "⚠️ هذه المجموعة محظورة لانتهاكها شروط خدمة تيليجرام (TOOLTIP).\n"
+                f"  → {name}"
+            )
+    return None
+
+
+def _bc_translate(res):
+    """يحوّل نتيجة الفحص لعربية واضحة"""
+    if res is None:
+        return "✅ سليم | لا يوجد حظر"
+    if res.startswith("OK|"):
+        _, t, name = (res.split("|", 2) + ["", ""])[:3]
+        return f"✅ سليم | النوع: {t} | الاسم: {name}"
+    if res == "BANNED_OR_NOT_FOUND":
+        return "🚫 محظور أو غير موجود"
+    if res == "BANNED_OR_PRIVATE":
+        return "🔒 محظور أو خاص"
+    if res == "BANNED":
+        return "🚫 محظور (BANNED)"
+    if res == "BANNED_YOU":
+        return "🚫 محظور أنت فيه"
+    if res == "BANNED_OR_EXPIRED":
+        return "⏰ الرابط منتهٍ أو محظور"
+    if res == "BANNED_OR_INVALID":
+        return "❌ الرابط غير صالح أو محظور"
+    if res == "INVALID_USER_ID":
+        return "❌ معرّف مستخدم غير صالح"
+    if res == "NOT_FOUND":
+        return "🔍 غير موجود"
+    if res == "FULL":
+        return "📊 المجموعة ممتلئة"
+    if res == "EXPIRED":
+        return "⏰ الرابط منتهٍ الصلاحية"
+    if res.startswith("SCAM_FAKE|"):
+        return f"🚨 رابط وهمي/نصب (SCAM): {res.split('|',1)[1]}"
+    if res.startswith("TOOLTIP:"):
+        return "🚫 " + res.replace("TOOLTIP:", "").strip()
+    if res.startswith("ERROR"):
+        return "⚠️ " + res
+    if res.startswith("FLOOD_WAIT"):
+        return "⏳ " + res
+    return res
+
+
+async def _bc_check_entity(identifier):
+    try:
+        entity = await client.get_entity(identifier)
+    except UsernameNotOccupiedError:
+        return "BANNED_OR_NOT_FOUND"
+    except ChannelPrivateError:
+        return "BANNED_OR_PRIVATE"
+    except ChannelBannedError:
+        return "BANNED"
+    except UserIdInvalidError:
+        return "INVALID_USER_ID"
+    except ValueError:
+        return "NOT_FOUND"
+    except Exception:
+        return "NOT_FOUND"
+    msg = _bc_tos(entity)
+    if msg:
+        return msg
+    return f"OK|{_bc_type(entity)}|{_bc_name(entity)}"
+
+
+async def _bc_check_invite(hashv):
+    try:
+        result = await client(CheckChatInviteRequest(hash=hashv))
+    except InviteHashExpiredError:
+        return "BANNED_OR_EXPIRED"
+    except InviteHashInvalidError:
+        return "BANNED_OR_INVALID"
+    except ChannelPrivateError:
+        return "BANNED_OR_PRIVATE"
+    except ChannelBannedError:
+        return "BANNED"
+    except Exception as e:
+        return f"ERROR: {type(e).__name__}: {e}"
+    if isinstance(result, ChatInviteAlready):
+        entity = getattr(result, "chat", None)
+        if entity:
+            msg = _bc_tos(entity)
+            if msg:
+                return msg
+            return f"OK|{_bc_type(entity)}|{_bc_name(entity)}"
+        return "OK|chat|MEMBER"
+    if isinstance(result, ChatInvite):
+        title = getattr(result, "title", "?")
+        if getattr(result, "scam", False) or getattr(result, "fake", False):
+            return f"SCAM_FAKE|{title}"
+        try:
+            await client(ImportChatInviteRequest(hash=hashv))
+            return f"OK|{('channel' if getattr(result, 'channel', False) else 'group')}|{title}"
+        except ChannelPrivateError:
+            return f"TOOLTIP: This group can't be displayed because it violated Telegram's Terms of Service.\n  -> {title}"
+        except ChannelBannedError:
+            return f"BANNED|{title}"
+        except UserBannedInChannelError:
+            return f"BANNED_YOU|{title}"
+        except UsersTooMuchError:
+            return f"FULL|{title}"
+        except InviteHashExpiredError:
+            return f"EXPIRED|{title}"
+        except Exception as e:
+            return f"ERROR: {e}"
+    return "ERROR: Unknown response"
+
+
+async def _bc_check(target):
+    parsed = _bc_extract(target)
+    if not parsed:
+        return "❌ مدخل غير صالح"
+    kind, value = parsed
+    try:
+        if kind == "invite":
+            return await _bc_check_invite(value)
+        return await _bc_check_entity(value)
+    except FloodWaitError as e:
+        return f"FLOOD_WAIT: wait {e.seconds}s"
+    except Exception as e:
+        return f"ERROR: {type(e).__name__}: {e}"
+
+
+@cmd(r"فحص(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg:
+        return await edit_delete(event, f"- اكتب: {PREFIX}فحص <رابط/يوزر/آيدي>", 8)
+    m = await event.edit("🔍 جاري الفحص...")
+    res = await _bc_check(arg)
+    await edit_or_reply(m, _bc_translate(res))
+
+
+@cmd(r"فحص_دفعه(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg:
+        return await edit_delete(event, f"- اكتب: {PREFIX}فحص_دفعه <رابط دعوة>", 8)
+    m = await event.edit("🔍 جاري فحص الدعوة...")
+    parsed = _bc_extract(arg)
+    if not parsed or parsed[0] != "invite":
+        return await edit_or_reply(m, "❌ هذا ليس رابط دعوة صالحاً")
+    res = await _bc_check_invite(parsed[1])
+    await edit_or_reply(m, _bc_translate(res))
+
+
+@cmd(r"فحص_مجموعه$")
+async def _(event):
+    m = await event.edit("🔍 جاري فحص المجموعة الحالية...")
+    try:
+        entity = await event.get_chat()
+        res = _bc_tos(entity)
+        if res:
+            out = res
+        else:
+            out = f"OK|{_bc_type(entity)}|{_bc_name(entity)}"
+    except Exception as e:
+        out = f"ERROR: {e}"
+    await edit_or_reply(m, _bc_translate(out))
 
 
 # ============================================================
