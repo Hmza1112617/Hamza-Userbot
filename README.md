@@ -42,25 +42,8 @@ pip install -r requirements.txt
 cp config.example.json config.json
 ```
 
-الآن عدّل `config.json` واملأ `API_ID` و `API_HASH` (الباقي لا تلمسه الآن):
-
-```bash
-nano config.json
-```
-
-مثال:
-
-```json
-{
-  "API_ID": 1234567,
-  "API_HASH": "abcdef0123456789abcdef0123456789",
-  "STRING_SESSION": "",
-  "PREFIX": ".",
-  "OWNER_NAME": "حمزة"
-}
-```
-
-احفظ بـ `Ctrl + X` ثم `Y` ثم `Enter`.
+> ✅ **لا تحتاج لفتح `config.json` يدوياً** — بعد تشغيل السورس مباشرة
+> سيطلب منك (`API_ID` و `API_HASH`) ثم رقم الهاتف وكود التحقق، ويحفظ كل شيء تلقائياً.
 
 التشغيل:
 
@@ -108,10 +91,10 @@ pip3 install -r requirements.txt
 
 # تجهيز الإعدادات
 cp config.example.json config.json
-nano config.json
 ```
 
-املأ `API_ID` و `API_HASH` ثم احفظ.
+> ✅ **لا تحتاج لفتح `config.json` يدوياً** — السورس عند التشغيل يطلب
+> `API_ID` و `API_HASH` ورقم الهاتف مباشرة ويحفظها تلقائياً.
 
 التشغيل المباشر:
 
