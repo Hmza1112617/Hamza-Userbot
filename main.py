@@ -407,7 +407,8 @@ MENU_MAIN = f"""**[ سورس حمزة ]**
 `{PREFIX}م14` ◂ أوامر التحكم
 `{PREFIX}م15` ◂ أوامر الذكاء الاصطناعي
 `{PREFIX}م16` ◂ أوامر التحديثات
-`{PREFIX}م17` ◂ باند و شد (فحص الروابط)"""
+`{PREFIX}م17` ◂ باند و شد (فحص الروابط)
+`{PREFIX}م18` ◂ الاسم الوقتي (وقت حي بجانب اسمك)"""
 
 MENU = {
     "م1": """**◂ أوامر الإدارة :**
@@ -545,6 +546,13 @@ MENU = {
 `{p}شد` <رابط/يوزر> ◂ يبدأ البلاغ المستمر (يفحص كل دورة هل الهدف محظور)
 `{p}شد_ايقاف` ◂ يوقف البلاغ المستمر
 `{p}شد_اعداد` ◂ عرض الإعدادات""",
+
+    "م18": """**◂ الاسم الوقتي (وقت حي بجانب اسمك):**
+
+`{p}وقتي` ◂ عرض الحالة والمعاينة
+`{p}وقتي تشغيل` ◂ يفعّل التحديث التلقائي كل دقيقة
+`{p}وقتي ايقاف` ◂ يوقفه
+`{p}وقتي شكل <رقم>` ◂ يختار شكل زخرفة الأرقام (اكتب `.وقتي شكل` لعرض القائمة)""",
 }
 
 
@@ -3210,6 +3218,115 @@ async def _(event):
                 db_write("report_cfg", cfg)
                 return await edit_or_reply(m, f"⛔ توقّف بعد أخطاء متتالية.\n📊 بلاغات مُرسلة: {sent}")
         await asyncio.sleep(cfg["speed"])
+
+
+# ============================================================
+#           الاسم الوقتي | LIVE TIME LASTNAME (م18)
+# ============================================================
+
+# أشكال زخرفة الأرقام (مشابه لبلوقن AutoTimeLastname)
+DIGIT_SETS = {
+    0:  {"name": "عادي",         "map": "0123456789"},
+    1:  {"name": "محاط بدائرة",    "map": "⓪①②③④⑤⑥⑦⑧⑨"},
+    2:  {"name": "محاط مليان",     "map": "⓿❶❷❸❹❺❻❼❽❾"},
+    3:  {"name": "فوق الخط",       "map": "⁰¹²³⁴⁵⁶⁷⁸⁹"},
+    4:  {"name": "تحت الخط",       "map": "₀₁₂₃₄₅₆₇₈₉"},
+    5:  {"name": "بين قوسين",      "map": "⁽⁰¹²³⁴⁵⁶⁷⁸⁹"},
+    6:  {"name": "عريض",          "map": "𝟎𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗"},
+    7:  {"name": "عريض مائل",       "map": "𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵"},
+    8:  {"name": "مزدوج",          "map": "𝟘𝟙𝟚𝟛𝟜𝟝𝟞𝟟𝟠𝟡"},
+    9:  {"name": "آلة كاتبة",       "map": "𝟢𝟣𝟤𝟥𝟦𝟧𝟨𝟩𝟪𝟫"},
+    10: {"name": "عرض كامل",        "map": "０１２３４５６７８９"},
+    11: {"name": "عربي شرقي",       "map": "٠١٢٣٤٥٦٧٨٩"},
+    12: {"name": "فارسي",          "map": "۰۱۲۳۴۵۶۷۸۹"},
+    33: {"name": "حروف يونانية",     "map": "αβγδεζηθικ"},
+    36: {"name": "مونو (Monospace)", "map": "𝟶𝟷𝟸𝟹𝟺𝟻𝟼𝟽𝟾𝟿"},
+}
+
+_time_task = None  # مرجع مهمة الحلقة
+
+
+def _time_digit_style():
+    return db_get("settings", "time_digit_style", 0)
+
+
+def _format_time_decorated():
+    now = datetime.datetime.now()
+    h12 = now.hour % 12
+    if h12 == 0:
+        h12 = 12
+    raw = f"{h12}:{now.minute:02d}"
+    ds = _time_digit_style()
+    dmap = DIGIT_SETS.get(ds, DIGIT_SETS[0])["map"]
+    out = []
+    for ch in raw:
+        if "0" <= ch <= "9":
+            idx = ord(ch) - 48
+            out.append(dmap[idx] if idx < len(dmap) else ch)
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+async def _time_loop():
+    """حلقة تحدّث الاسم الأخير بوقت حي كل دقيقة"""
+    while db_get("settings", "time_active", False):
+        t = _format_time_decorated()
+        try:
+            await client(functions.account.UpdateProfileRequest(last_name=t))
+        except Exception:
+            pass
+        now = datetime.datetime.now()
+        sleep_s = 60 - now.second - now.microsecond / 1_000_000
+        if sleep_s <= 0:
+            sleep_s = 60.0
+        await asyncio.sleep(sleep_s)
+
+
+@cmd(r"وقتي تشغيل$")
+async def _(event):
+    db_set("settings", "time_active", True)
+    global _time_task
+    if _time_task is None or _time_task.done():
+        _time_task = asyncio.ensure_future(_time_loop())
+    await edit_or_reply(event, "✅ تم تفعيل الاسم الوقتي — سيظهر الوقت بجانب اسمك كل دقيقة")
+
+
+@cmd(r"وقتي ايقاف$")
+async def _(event):
+    db_set("settings", "time_active", False)
+    await edit_or_reply(event, "⏹️ تم إيقاف الاسم الوقتي")
+
+
+@cmd(r"وقتي شكل(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg.isdigit():
+        lines = "\n".join(f"`{k}` ◂ {v['name']}" for k, v in DIGIT_SETS.items())
+        return await edit_or_reply(
+            event,
+            f"**◂ أشكال أرقام الاسم الوقتي:**\n{lines}\n\n"
+            f"للاختيار: `{PREFIX}وقتي شكل <رقم>`\nالحالي: {_time_digit_style()}",
+        )
+    k = int(arg)
+    if k not in DIGIT_SETS:
+        return await edit_or_reply(event, "❌ رقم شكل غير موجود — اكتب `.وقتي شكل` لعرض القائمة")
+    db_set("settings", "time_digit_style", k)
+    preview = _format_time_decorated()
+    await edit_or_reply(event, f"✅ تم ضبط الشكل: {DIGIT_SETS[k]['name']}\nالمعاينة: {preview}")
+
+
+@cmd(r"وقتي$")
+async def _(event):
+    preview = _format_time_decorated()
+    active = db_get("settings", "time_active", False)
+    await edit_or_reply(
+        event,
+        f"**◂ الاسم الوقتي:**\nالحالة: {'✅ شغال' if active else '⛔ متوقف'}\n"
+        f"الشكل: {DIGIT_SETS.get(_time_digit_style(), DIGIT_SETS[0])['name']}\n"
+        f"المعاينة: {preview}\n\n"
+        f"الأوامر:\n`{PREFIX}وقتي تشغيل`\n`{PREFIX}وقتي ايقاف`\n`{PREFIX}وقتي شكل <رقم>`",
+    )
 
 
 # ============================================================
