@@ -2696,6 +2696,54 @@ async def _(event):
         await edit_or_reply(m, f"- خطأ بالذكاء: `{e}`")
 
 
+# ============================================================
+#              التحديثات | GITHUB UPDATES
+# ============================================================
+
+GITHUB_REPO = "Hmza1112617/Hamza-Userbot"  # مستودع السورس
+
+
+async def _github_get(path):
+    """طلب متزامن لـ GitHub API"""
+    import urllib.request
+
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/{path}"
+    req = urllib.request.Request(url, headers={"User-Agent": "HamzaUserbot", "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.loads(r.read().decode("utf-8", "ignore"))
+
+
+@cmd(r"تحديثات$")
+async def _(event):
+    m = await event.edit("🔄 جاري فحص التحديثات من GitHub...")
+    try:
+        commits = await asyncio.to_thread(_github_get, "commits?per_page=8")
+        lines = ["**◂ آخر التحديثات والإضافات (GitHub):**\n"]
+        for c in commits:
+            msg = c["commit"]["message"].split("\n")[0][:80]
+            date = c["commit"]["author"]["date"][:10]
+            author = c["commit"]["author"]["name"]
+            lines.append(f"• `{date}` — {msg}\n  بواسطة: {author}")
+        out = "\n".join(lines)
+        out += f"\n\nالمستودع: https://github.com/{GITHUB_REPO}"
+        await edit_or_reply(m, out)
+    except Exception as e:
+        await edit_or_reply(m, f"- خطأ بجلب التحديثات: `{e}`")
+
+
+@cmd(r"اخر_تحديث$")
+async def _(event):
+    m = await event.edit("🔄 ...")
+    try:
+        rel = await asyncio.to_thread(_github_get, "releases/latest")
+        name = rel.get("name") or rel.get("tag_name") or "بدون اسم"
+        body = rel.get("body") or "لا يوجد وصف"
+        notes = body[:1500]
+        await edit_or_reply(m, f"**◂ آخر إصدار:** `{name}`\n\n{notes}\n\nرابط: {rel.get('html_url','')}")
+    except Exception as e:
+        await edit_or_reply(m, f"- لا يوجد إصدار بعد أو خطأ: `{e}`")
+
+
 @client.on(events.NewMessage(incoming=True))
 async def _ai_auto_watcher(event):
     if not event.is_private or not event.text:
