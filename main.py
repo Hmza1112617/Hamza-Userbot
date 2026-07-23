@@ -3649,11 +3649,16 @@ async def _(event):
         await asyncio.wait_for(proc.wait(), timeout=120)
         if proc.returncode != 0:
             return await m.edit(f"❌ فشل تطبيق التأثير — تأكد من أن الملف صالح")
+        import mutagen
+        try:
+            dur = int(mutagen.File(tmp_out).info.length)
+        except Exception:
+            dur = 0
         await event.client.send_file(
             event.chat_id, tmp_out,
             voice_note=True,
             attributes=[types.DocumentAttributeAudio(
-                voice=True, duration=0, title="", performer="",
+                voice=True, duration=dur,
             )],
             reply_to=reply.id,
         )
