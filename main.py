@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 سورس حمزة | يوزربوت تيليثون
 كل شيء في ملف واحد | تخزين JSON | بدون بوت خارجي | بدون قواعد بيانات
@@ -57,9 +55,6 @@ from telethon.tl.types import (
     Chat,
 )
 
-# ============================================================
-#                    الإعداد | CONFIG
-# ============================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
@@ -69,7 +64,6 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 def load_config():
     if not os.path.exists(CONFIG_FILE):
-        # لا يوجد ملف — أنشئه واطلب البيانات
         cfg = {}
     else:
         try:
@@ -79,7 +73,6 @@ def load_config():
             cfg = {}
     cfg["API_ID"] = int(cfg.get("API_ID") or os.environ.get("API_ID") or 0)
     cfg["API_HASH"] = cfg.get("API_HASH") or os.environ.get("API_HASH") or ""
-    # اعتبار القيم الوهمية/الافتراضية كأنها مفقودة
     _PLACEHOLDER_HASHES = ("", "your_api_hash_here", "YOUR_API_HASH_HERE", "0123456789abcdef0123456789abcdef")
     if cfg["API_HASH"].strip() in _PLACEHOLDER_HASHES:
         cfg["API_HASH"] = ""
@@ -90,7 +83,6 @@ def load_config():
     )
     cfg["PREFIX"] = cfg.get("PREFIX") or "."
     cfg["OWNER_NAME"] = cfg.get("OWNER_NAME") or "حمزة"
-    # طلب البيانات تفاعلياً عند أول تشغيل
     if not cfg["API_ID"] or not cfg["API_HASH"]:
         print("=" * 45)
         print("  إعداد سورس حمزة — أدخل بياناتك:")
@@ -106,7 +98,6 @@ def load_config():
         if not cfg["API_ID"] or not cfg["API_HASH"]:
             print("بيانات غير صحيحة")
             sys.exit(1)
-        # حفظ ما أُدخل (رقم الهاتف يُطلب أثناء تسجيل الدخول)
         _save_cfg_basic(cfg)
         print("✓ تم حفظ API_ID و API_HASH")
     return cfg
@@ -147,9 +138,6 @@ CONFIG = load_config()
 PREFIX = CONFIG["PREFIX"]
 OWNER_NAME = CONFIG["OWNER_NAME"]
 
-# ============================================================
-#                  تخزين JSON | ملفات منفصلة
-# ============================================================
 
 
 def _path(name):
@@ -193,9 +181,6 @@ def db_del(name, key):
     return False
 
 
-# ============================================================
-#                    العميل | CLIENT
-# ============================================================
 
 client = TelegramClient(
     StringSession(CONFIG["STRING_SESSION"]),
@@ -207,12 +192,9 @@ client = TelegramClient(
 )
 
 START_TIME = time.time()
-CMD_SECTIONS = {}  # لتخزين اقسام الاوامر لعرضها في .الاوامر
+CMD_SECTIONS = {}
 
 
-# ============================================================
-#            الديكوريتر الرئيسي | ar_cmd / cmd
-# ============================================================
 
 
 def cmd(pattern, groups_only=False, private_only=False, edited=True):
@@ -255,9 +237,6 @@ def cmd(pattern, groups_only=False, private_only=False, edited=True):
     return decorator
 
 
-# ============================================================
-#                  دوال مساعدة | HELPERS
-# ============================================================
 
 
 async def edit_or_reply(event, text, link_preview=False, **kwargs):
@@ -269,12 +248,10 @@ async def edit_or_reply(event, text, link_preview=False, **kwargs):
                 return await event.edit(text, link_preview=link_preview, **kwargs)
             except Exception:
                 return await event.reply(text, link_preview=link_preview, **kwargs)
-        # نص طويل: أرسله كملف نصي
         return await _send_as_file(event, text)
     except MessageNotModifiedError:
         return event
     except Exception:
-        # أي خطأ بالإرسال → أرسل كملف منفصل
         try:
             return await _send_as_file(event, text)
         except Exception:
@@ -295,7 +272,6 @@ async def _send_as_file(event, text):
             pass
         return sent
     except Exception as e:
-        # المحاولة الأخيرة: تقسيم لرسائل أقصر
         return await _send_chunks(event, text, str(e))
 
 
@@ -382,9 +358,6 @@ def readable_time(seconds):
     return result.strip() or "0ث"
 
 
-# ============================================================
-#                 قائمة الأوامر | .الاوامر
-# ============================================================
 
 MENU_MAIN = f"""**[ سورس حمزة ]**
 ✦┅━╍━╍╍━━╍━━╍━┅✦
@@ -579,9 +552,6 @@ for _sec, _txt in MENU.items():
     )
 
 
-# ============================================================
-#                  أوامر الإدارة | ADMIN
-# ============================================================
 
 BAN_RIGHTS = ChatBannedRights(until_date=None, view_messages=True)
 UNBAN_RIGHTS = ChatBannedRights(
@@ -806,9 +776,6 @@ async def _(event):
     await edit_or_reply(event, f"تم حذف تحذيرات {mention(user)} ✓")
 
 
-# ============================================================
-#            أوامر المجموعة + الايدي + الكشف
-# ============================================================
 
 
 @cmd(r"الايدي(?:\s|$)([\s\S]*)")
@@ -907,9 +874,6 @@ async def _(event):
     await edit_or_reply(event, txt)
 
 
-# ============================================================
-#              أوامر الردود | REPLIES
-# ============================================================
 
 
 @cmd(r"اضف رد(?:\s|$)([\s\S]*)")
@@ -965,9 +929,6 @@ async def _replies_watcher(event):
             pass
 
 
-# ============================================================
-#              أوامر الترحيب | WELCOME
-# ============================================================
 
 
 @cmd(r"ضبط ترحيب(?:\s|$)([\s\S]*)", groups_only=True)
@@ -1014,9 +975,6 @@ async def _welcome_watcher(event):
         pass
 
 
-# ============================================================
-#              أوامر المنع | LOCKED WORDS
-# ============================================================
 
 
 @cmd(r"منع(?:\s|$)([\s\S]*)", groups_only=True)
@@ -1075,9 +1033,6 @@ async def _locked_watcher(event):
             pass
 
 
-# ============================================================
-#            أوامر حماية الخاص | PMPERMIT
-# ============================================================
 
 PM_WARN_TEXT = (
     f"**◂ حماية الخاص — سورس حمزة**\n\n"
@@ -1169,9 +1124,6 @@ async def _pmpermit_watcher(event):
         pass
 
 
-# ============================================================
-#              أوامر الإذاعة | BROADCAST
-# ============================================================
 
 
 @cmd(r"للكروبات(?:\s|$)([\s\S]*)")
@@ -1218,9 +1170,6 @@ async def _(event):
     await m.edit(f"تم النشر ✓\nنجح: {done} | فشل: {failed}")
 
 
-# ============================================================
-#              أوامر البوت | SYSTEM
-# ============================================================
 
 
 @cmd(r"بنك$")
@@ -1246,9 +1195,6 @@ async def _(event):
     os.execl(sys.executable, sys.executable, os.path.abspath(__file__))
 
 
-# ============================================================
-#              أوامر البروفايل | PROFILE
-# ============================================================
 
 
 @cmd(r"تغيير اسم(?:\s|$)([\s\S]*)")
@@ -1312,9 +1258,6 @@ async def _(event):
     await edit_or_reply(event, txt)
 
 
-# ============================================================
-#              أوامر الترجمة | TRANSLATE
-# ============================================================
 
 
 @cmd(r"ترجمة(?:\s|$)([\s\S]*)")
@@ -1339,11 +1282,7 @@ async def _(event):
         await edit_delete(event, f"- تعذر الترجمة (ثبّت googletrans): `{e}`", 10)
 
 
-# ============================================================
-#          أوامر السبام والصملات | SPAM & FORWARD
-# ============================================================
 
-# --- الحالة ---
 spam_running = False
 spam_task = None
 spam_typing_task = None
@@ -1356,12 +1295,7 @@ selected_saved_msg = None
 flood_guard_enabled = False
 flood_guard = None
 
-# ============================================================
-#            مولّد السب التلقائي | INSULT GENERATOR
-#   قوالب + مكوّنات في data/insults.json = ملايين التركيبات
-# ============================================================
 
-# المحتوى الافتراضي — يُكتب في data/insults.json عند أول تشغيل فقط
 _DEFAULT_INSULTS = {
     "qrayb": [
         "امك", "ابوك", "اختك", "اخوك", "خالتك", "عمتك", "جدتك", "مرتك",
@@ -1426,7 +1360,6 @@ def _load_insults():
     if not os.path.exists(_path("insults")):
         db_write("insults", _DEFAULT_INSULTS)
     data = db_read("insults", _DEFAULT_INSULTS)
-    # ضمان وجود كل المفاتيح
     for k, v in _DEFAULT_INSULTS.items():
         data.setdefault(k, v)
     INSULTS = data
@@ -1437,7 +1370,6 @@ def insult_combos():
     n = len(INSULTS.get("templates", [1]))
     for k in ("qrayb", "feal", "jomla", "sifat", "laheq", "sakhira"):
         n *= max(len(INSULTS.get(k, [""])), 1)
-    # قوالب الفتحات كل فتحة يمكن ملؤها بأي عنصر من حشوات
     fillers = len(INSULTS.get("حشوات") or [1])
     for ftpl in INSULTS.get("قوالب_فتحات") or []:
         slots = ftpl.count("(")
@@ -1457,7 +1389,6 @@ def generate_insult():
     """يولّد جملة سب عشوائية من القوالب والمكوّنات (من JSON)"""
     if not INSULTS:
         _load_insults()
-    # اختيار عشوائي: مرة من templates العادية، مرة من قوالب_فتحات
     ftpl = INSULTS.get("قوالب_فتحات") or []
     use_fillable = ftpl and random.random() < 0.4
     if use_fillable:
@@ -1567,7 +1498,6 @@ async def _forward_loop(chat_id):
         await asyncio.sleep(forward_delay)
 
 
-# --- مولّد السب ---
 _INS_KEYS = {
     "قريب": "qrayb", "فعل": "feal", "جمله": "jomla",
     "صفه": "sifat", "لاحقه": "laheq", "ساخره": "sakhira", "قالب": "templates",
@@ -1613,7 +1543,6 @@ async def _(event):
     )
 
 
-# --- السبام ---
 @cmd(r"نيكه$")
 async def _(event):
     global spam_running, spam_task, spam_typing_task
@@ -1622,7 +1551,6 @@ async def _(event):
     reply = await event.get_reply_message()
     reply_to = reply.id if reply else None
     spam_running = True
-    # حفظ الحالة لاستئنافها بعد إعادة التشغيل
     db_set("settings", "spam_active", True)
     db_set("settings", "spam_chat", event.chat_id)
     db_set("settings", "spam_reply", reply_to)
@@ -1663,7 +1591,6 @@ async def _(event):
         await edit_delete(event, "- قيمة غير صالحة | مثال: سرعه 0.5", 6)
 
 
-# --- التتبع (رد تلقائي بالخاص) ---
 @cmd(r"تتبع$")
 async def _(event):
     global follow_running
@@ -1693,7 +1620,6 @@ async def _auto_follow(event):
             pass
 
 
-# --- حماية الفلود ---
 @cmd(r"حماية الفلود$")
 async def _(event):
     global flood_guard_enabled
@@ -1718,7 +1644,6 @@ async def _(event):
     await edit_or_reply(event, txt)
 
 
-# --- التحويل من المحفوظات ---
 @cmd(r"تحديد$")
 async def _(event):
     global selected_saved_msg
@@ -1768,9 +1693,6 @@ async def _(event):
         await edit_delete(event, "- قيمة غير صالحة | مثال: ديلاي 0.5", 6)
 
 
-# ============================================================
-#              أوامر الصيغ | CONVERT
-# ============================================================
 
 
 @cmd(r"ملصق$")
@@ -1854,9 +1776,6 @@ async def _(event):
                     pass
 
 
-# ============================================================
-#              أوامر التسلية | FUN
-# ============================================================
 
 
 @cmd(r"نسبة الحب(?:\s|$)([\s\S]*)")
@@ -1903,9 +1822,6 @@ async def _(event):
     await event.edit("انتهى ✓")
 
 
-# ============================================================
-#              أوامر التحكم | SUDO CONTROL
-# ============================================================
 
 
 @cmd(r"التحكم تشغيل$")
@@ -1953,11 +1869,7 @@ async def _(event):
     await edit_or_reply(event, txt)
 
 
-# ============================================================
-#            الذكاء الاصطناعي | AI (QuillBot)
-# ============================================================
 
-# التعليمات الافتراضية — تُكتب في data/ai.json أول مرة، وقابلة للتعديل
 _DEFAULT_AI_PROMPT = (
     "انت مساعد آلي تابع لـ '{owner}'، ومهمتك الرد على رسائل الناس التي تصل الى "
     "حسابه في تيليجرام نيابةً عنه. "
@@ -2025,11 +1937,9 @@ async def _ai_run_raw_tl(p):
         method = None
         params = {}
 
-        # الشكل 1
         if p.get("namespace") and p.get("method"):
             ns_name, method, params = p["namespace"], p["method"], (p.get("params") or {})
 
-        # الشكل 3
         elif p.get("tl"):
             tl = p["tl"]
             if "." in tl:
@@ -2038,25 +1948,21 @@ async def _ai_run_raw_tl(p):
                 method = tl
             params = p.get("params") or {}
 
-        # الشكل 2: request._ يحمل "namespace.Method"
         elif isinstance(p.get("request"), dict) and p["request"].get("_"):
             full = p["request"]["_"]
             if "." in full:
                 ns_name, method = full.split(".", 1)
             else:
                 method = full
-            # باقي حقول request هي المعطيات (ما عدا المفتاح "_")
             params = {k: v for k, v in p["request"].items() if k != "_"}
 
         if not method:
             return "❌ تعذّر فهم شكل الاستدعاء raw_tl"
 
-        # تحديد الوحدة (namespace)
         ns = None
         if ns_name:
             ns = getattr(functions, ns_name, None) or getattr(types, ns_name, None)
         if ns is None:
-            # محاولة استنتاج الوحدة من اسم الدالة (مثلاً GetFullChannel -> channels)
             guess = method.split("Get")[0].split("Edit")[0].split("Send")[0].split("Create")[0].split("Delete")[0].split("Resolve")[0].rstrip("s").lower() or "channels"
             ns = getattr(functions, guess, None) or getattr(types, guess, None)
         if ns is None:
@@ -2065,7 +1971,6 @@ async def _ai_run_raw_tl(p):
         if fn is None:
             return f"❌ لا توجد دالة {method} في {ns_name or guess}"
 
-        # تحويل المعطيات النصية إلى كيانات عند الإمكان (username/channel)
         params = await _ai_coerce_params(fn, params)
         res = await client(fn(**params))
         return f"⚡ نتيجة {method}:\n{str(res)[:3000]}"
@@ -2088,7 +1993,7 @@ async def _ai_coerce_params(fn, params):
                 try:
                     ent = await _ai_resolve_ent(v)
                     if ent is not None:
-                        out[k] = ent  # Telethon يقبل كائن الكيان في معظم دوال TL
+                        out[k] = ent
                         continue
                 except Exception:
                     pass
@@ -2239,7 +2144,6 @@ async def _ai_run_tool(call):
 def _ai_parse_tool_calls(text):
     """يستخرج استدعاءات الأدوات بصيغة JSON من رد الذكاء (كتل code أو JSON عاري)"""
     calls = []
-    # 1) كتل ```json ... ```
     for m in _re.finditer(r"```(?:json)?\s*(\{.*?\})\s*```", text, _re.DOTALL):
         try:
             calls.append(json.loads(m.group(1)))
@@ -2247,7 +2151,6 @@ def _ai_parse_tool_calls(text):
             pass
     if calls:
         return calls
-    # 2) JSON عاري بأقواس متوازنة (يتحمل تداخل {})
     i = 0
     n = len(text)
     while i < n:
@@ -2299,7 +2202,6 @@ def build_source_info():
             formatted = txt.format(p=PREFIX)
         except Exception:
             formatted = txt
-        # نزيل تنسيق markdown البسيط لأجل نص عادي
         clean = formatted.replace("**", "").replace("`", "")
         lines.append(f"--- القسم {sec} ---")
         lines.append(clean)
@@ -2393,12 +2295,12 @@ def _ai_request_sync(full_message):
     return "".join(out).strip()
 
 
-AI_CONTEXT_LIMIT = 50      # عدد رسائل السياق
-AI_CONTEXT_MAXCHARS = 6000  # حد إجمالي لأحرف السياق
-AI_MSG_MAXCHARS = 400       # حد طول الرسالة الواحدة
+AI_CONTEXT_LIMIT = 50
+AI_CONTEXT_MAXCHARS = 6000
+AI_MSG_MAXCHARS = 400
 AI_CONTEXT_LIMIT = db_get("settings", "ai_context", AI_CONTEXT_LIMIT)
-AI_MEM_LIMIT = 40           # عدد الرسائل المحفوظة في ذاكرة كل مرسل
-AI_MEM_MAXCHARS = 8000      # حد أحرف الذاكرة لكل مرسل
+AI_MEM_LIMIT = 40
+AI_MEM_MAXCHARS = 8000
 
 
 def _ai_mem_key(sender_id):
@@ -2461,7 +2363,7 @@ async def _build_context(event):
                 except Exception:
                     who = "مستخدم"
             lines.append(f"{who}: {body}")
-        lines.reverse()  # الأقدم أولاً
+        lines.reverse()
         text = "\n".join(lines)
         if len(text) > AI_CONTEXT_MAXCHARS:
             text = "…\n" + text[-AI_CONTEXT_MAXCHARS:]
@@ -2485,7 +2387,6 @@ async def _resolve(target):
         return _RESOLVE_CACHE[target]
     try:
         if target.lstrip("-").isdigit() or target.startswith("+"):
-            # رقم هاتف: نستورده أولاً للحصول على الكيان
             phone = target if target.startswith("+") else "+" + target.lstrip("+")
             imp = await client(functions.contacts.ImportContactsRequest(
                 contacts=[types.InputPhoneContact(client_id=0, phone=phone, first_name="x", last_name="")]))
@@ -2493,7 +2394,6 @@ async def _resolve(target):
                 ent = imp.users[0]
                 _RESOLVE_CACHE[target] = ent
                 return ent
-            # ربما رقم طويل بلا + هو معرّف رقمي
             if target.lstrip("+").isdigit() and not target.startswith("+"):
                 try:
                     ent = await client.get_entity(int(target))
@@ -2521,7 +2421,6 @@ async def _ai_execute_action(instruction, event):
     """ينفّذ أي إجراء عبر Telethon بناءً على طلب المالك ويرجع نص النتيجة"""
     ins = instruction.strip()
     try:
-        # إرسال رسالة لشخص/معرف (يدعم عدة أهداف مفصولة بفاصلة)
         m = _re.search(r"ابعت\s+(?:رسالة\s+)?(?:لـ|إلى|ل)\s+([^\:]+?)\s*[:：]\s*(.+)", ins)
         if m:
             targets = [t.strip() for t in m.group(1).strip().split(",")]
@@ -2539,7 +2438,6 @@ async def _ai_execute_action(instruction, event):
                     res.append(f"❌ {t}: {e}")
             return "\n".join(res)
 
-        # حظر رقم/معرف/يوزر
         for kw in (r"حظر", r"بان", r"امنع"):
             m = _re.search(kw + r"\s+(?:الرقم\s+|المستخدم\s+|اليوزر\s+)?(.+)", ins)
             if m:
@@ -2553,7 +2451,6 @@ async def _ai_execute_action(instruction, event):
                 except Exception as e:
                     return f"❌ فشل الحظر: {e}"
 
-        # إلغاء حظر
         m = _re.search(r"الغاء\s+حظر\s+(?:الرقم\s+|المستخدم\s+|اليوزر\s+)?(.+)", ins)
         if m:
             ent = await _resolve(m.group(1).strip())
@@ -2565,7 +2462,6 @@ async def _ai_execute_action(instruction, event):
             except Exception as e:
                 return f"❌ فشل: {e}"
 
-        # طرد عضو من مجموعة (بحاجة ذكر المجموعة)
         m = _re.search(r"اطرد\s+(?:المستخدم\s+)?(.+?)\s+(?:من\s+|في\s+)?(.+)", ins)
         if m and (_re.search(r"من\s+|في\s+", ins)):
             ent = await _resolve(m.group(1).strip())
@@ -2580,7 +2476,6 @@ async def _ai_execute_action(instruction, event):
             except Exception as e:
                 return f"❌ فشل الطرد: {e}"
 
-        # تثبيت رسالة (بالرد)
         if _re.search(r"ثبت|پین", ins):
             if event and event.reply_to_msg_id:
                 try:
@@ -2589,7 +2484,6 @@ async def _ai_execute_action(instruction, event):
                 except Exception as e:
                     return f"❌ فشل التثبيت: {e}"
 
-        # قراءة آخر رسائل في محادثة
         m = _re.search(r"اقر[اأ]?\s*(?:آخر\s+)?(\d+)?\s*رسال[ةه]?\s+(?:من\s+|في\s+)?(.+)", ins)
         if m:
             limit = int(m.group(1)) if m.group(1) else 5
@@ -2603,7 +2497,6 @@ async def _ai_execute_action(instruction, event):
                 out.append(f"{who}: {msg.raw_text or '[وسائط]'}")
             return "📨 آخر الرسائل:\n" + "\n".join(reversed(out)) if out else "لا توجد رسائل"
 
-        # حذف رسائل المحادثة (مسح)
         m = _re.search(r"امسح\s+(?:رسائل\s+)?(.+?)(?:\s+مع\s+|\s+من\s+)?(.+)?$", ins)
         if m and _re.search(r"مسح|امسح", ins):
             target = m.group(2).strip() if m.group(2) else (m.group(1).strip() if m.group(1) else None)
@@ -2617,7 +2510,6 @@ async def _ai_execute_action(instruction, event):
                 except Exception as e:
                     return f"❌ فشل المسح: {e}"
 
-        # معلوماتي / من أنا
         if _re.search(r"من\s+انت|معلوماتي|حسابي|من\s+أنا", ins):
             me = await client.get_me()
             return (
@@ -2626,14 +2518,12 @@ async def _ai_execute_action(instruction, event):
                 f"بريميوم: {'نعم' if getattr(me, 'premium', False) else 'لا'}"
             )
 
-        # قائمة المحادثات
         if _re.search(r"محادثاتي|قوائمي|الدردشات|الشاتات|قائمتي", ins):
             dialogs = []
             async for d in client.iter_dialogs(limit=25):
                 dialogs.append(f"- {d.name} ({d.id})")
             return "💬 المحادثات:\n" + "\n".join(dialogs)
 
-        # إنشاء مجموعة
         m = _re.search(r"انش[ئي]?\s+(?:مجموعة\s+|قروب\s+)?(.+)", ins)
         if m:
             try:
@@ -2644,7 +2534,6 @@ async def _ai_execute_action(instruction, event):
             except Exception as e:
                 return f"❌ فشل الإنشاء: {e}"
 
-        # إضافة عضو لمجموعة
         m = _re.search(r"اضف\s+(?:المستخدم\s+)?(.+?)\s+(?:إلى\s+|لـ|ل)\s+(.+)", ins)
         if m:
             ent = await _resolve(m.group(1).strip())
@@ -2659,7 +2548,6 @@ async def _ai_execute_action(instruction, event):
             except Exception as e:
                 return f"❌ فشل الدعوة: {e}"
 
-        # البحث عن مستخدم
         m = _re.search(r"ابحث\s+(?:عن\s+)?(.+)", ins)
         if m:
             ent = await _resolve(m.group(1).strip())
@@ -2669,7 +2557,6 @@ async def _ai_execute_action(instruction, event):
                 return f"🔎 وُجد: {get_display_name(ent)} | @{getattr(ent,'username',None) or 'لايوجد'} | id {ent.id}"
             return f"🔎 وُجد كيان: {ent}"
 
-        # معلومات أي مستخدم
         m = _re.search(r"معلومات\s+(?:المستخدم\s+|الرقم\s+)?(.+)", ins)
         if m:
             ent = await _resolve(m.group(1).strip())
@@ -2724,7 +2611,6 @@ async def ai_ask(question, event=None, owner_chat=False, with_tools=False):
             sender = await event.get_sender()
             ctx["sender_name"] = get_display_name(sender)
             ctx["sender_id"] = getattr(sender, "id", "")
-            # معلومات المرسل الكاملة
             ctx["sender_user"] = getattr(sender, "username", "") or "لايوجد"
             ctx["sender_first"] = getattr(sender, "first_name", "") or ""
             ctx["sender_last"] = getattr(sender, "last_name", "") or ""
@@ -2760,10 +2646,8 @@ async def ai_ask(question, event=None, owner_chat=False, with_tools=False):
     except Exception:
         system = prompt
     context = await _build_context(event)
-    # ذاكرة المحادثة الخاصة بالمرسل (يتذكر رسائل ومحادثات سابقة)
     sender_id = ctx.get("sender_id") or "unknown"
     memory = ai_mem_format(sender_id)
-    # دليل السورس الكامل
     source_info = load_source_info()
     parts = [f"[تعليمات النظام]\n{system}"]
     if source_info:
@@ -2772,12 +2656,10 @@ async def ai_ask(question, event=None, owner_chat=False, with_tools=False):
         parts.append(f"[سياق المحادثة السابقة — آخر {AI_CONTEXT_LIMIT} رسالة]\n{context}")
     if memory:
         parts.append(f"[ذاكرة المحادثة مع هذا الشخص — ما تذكرته سابقاً]\n{memory}")
-    # جلسة المحادثة التفاعلية مع المالك (للمتابعة والتصحيح)
     if owner_chat:
         ochat = ai_mem_format("chat_owner")
         if ochat:
             parts.append(f"[محادثتك السابقة مع المالك — لكي تكمل/تصحّح بناءً عليها]\n{ochat}")
-    # تعريف أدوات Telethon بصيغة JSON parameters (للتنفيذ الحرفي بلا حدود)
     if with_tools:
         tools = _ai_tools_list()
         tools_txt = json.dumps(tools, ensure_ascii=False, indent=1)
@@ -2792,7 +2674,6 @@ async def ai_ask(question, event=None, owner_chat=False, with_tools=False):
     parts.append(f"[رسالة المستخدم الحالية]\n{question}")
     full = "\n\n".join(parts)
     answer = await asyncio.to_thread(_ai_request_sync, full)
-    # حفظ في الذاكرة
     if answer:
         ai_mem_add(sender_id, "user", question)
         ai_mem_add(sender_id, "assistant", answer)
@@ -2831,7 +2712,7 @@ async def _(event):
 @cmd(r"ذكاء مفعل$")
 async def _(event):
     db_set("settings", "ai_full", True)
-    db_set("settings", "ai_auto", False)  # الوضع الشامل للأمر فقط، ليس للخاص
+    db_set("settings", "ai_auto", False)
     build_source_info()
     await edit_or_reply(
         event,
@@ -2925,12 +2806,10 @@ async def _(event):
         return await edit_delete(event, f"- اكتب: {PREFIX}ذكاء <سؤالك>", 8)
     m = await event.edit("🤖 جاري التفكير...")
     try:
-        # الوضع الشامل: الذكاء يعيد استدعاء أداة JSON وننفّذه فعلياً
         if db_get("settings", "ai_full", False):
             answer = await ai_ask(arg, event, owner_chat=True, with_tools=True)
             if not answer:
                 return await m.edit("- لم أحصل على رد، حاول مرة أخرى")
-            # تنفيذ أي استدعاء أداة في الرد
             results = []
             for call in _ai_parse_tool_calls(answer):
                 res = await _ai_run_tool(call)
@@ -2940,7 +2819,6 @@ async def _(event):
             out = answer
             if results:
                 out += "\n\n⚡ **نتائج التنفيذ:**\n" + "\n".join(results)
-                # نعيد إرسال النتائج للذكاء ليكمل/يصحّح
                 follow = await ai_ask(
                     "[نتيجة تنفيذ أدواتك]:\n" + "\n".join(results) +
                     "\nاشرح للمالك ما تم، وإن احتجت تصحيحاً اقترح أداة أخرى.",
@@ -2961,10 +2839,6 @@ async def _(event):
         await edit_or_reply(m, f"- خطأ بالذكاء: `{e}`")
 
 
-# ============================================================
-# ============================================================
-#              باند و شد | BANNED CHECKER
-# ============================================================
 
 
 def _bc_extract(text):
@@ -3184,11 +3058,7 @@ async def _(event):
     await edit_or_reply(m, _bc_translate(out))
 
 
-# ============================================================
-#        شد داخلي | MASS REPORT (البلاغات)
-# ============================================================
 
-# أنواع البلاغات المتاحة في تيليجرام
 REPORT_REASONS = {
     "سبام": "spam",
     "اباحي": "porn",
@@ -3267,7 +3137,6 @@ async def _target_still_alive(target):
         ent = await _ai_resolve_ent(target)
         if ent is None:
             return False, "❌ تعذّر إيجاد الهدف (ممكن محظور أو محذوف)"
-        # تحقق إضافي: هل القناة/المجموعة فعلاً قابلة للوصول
         try:
             await client.get_permissions(ent) if getattr(ent, "megagroup", False) or getattr(ent, "broadcast", False) else None
         except Exception:
@@ -3374,7 +3243,6 @@ async def _(event):
         if not cfg.get("running", False):
             await edit_or_reply(m, f"⏹️ تم الإيقاف بطلبك.\n📊 بلاغات مُرسلة: {sent}")
             return
-        # فحص كل دورة: هل الهدف لم يُحظر بعد؟
         alive, res = await _target_still_alive(target)
         if not alive:
             await edit_or_reply(m, f"⛔ توقّف البلاغ تلقائياً:\n{res}\n📊 بلاغات مُرسلة: {sent}")
@@ -3393,7 +3261,6 @@ async def _(event):
                 pass
         else:
             err_count += 1
-            # أخطاء متتالية قد تعني حظر الحساب أو الهدف
             await edit_or_reply(m, f"⚠️ خطأ في البلاغ ({err_count}): {r}\n📊 مُرسل: {sent}")
             if err_count >= 5:
                 cfg = _report_settings()
@@ -3403,11 +3270,7 @@ async def _(event):
         await asyncio.sleep(cfg["speed"])
 
 
-# ============================================================
-#           الاسم الوقتي | LIVE TIME LASTNAME (م18)
-# ============================================================
 
-# أشكال زخرفة الأرقام (مشابه لبلوقن AutoTimeLastname)
 DIGIT_SETS = {
     0:  {"name": "عادي",         "map": "0123456789"},
     1:  {"name": "محاط بدائرة",    "map": "⓪①②③④⑤⑥⑦⑧⑨"},
@@ -3426,7 +3289,6 @@ DIGIT_SETS = {
     36: {"name": "مونو (Monospace)", "map": "𝟶𝟷𝟸𝟹𝟺𝟻𝟼𝟽𝟾𝟿"},
 }
 
-# مناطق زمنية شائعة (الاسم المعروض : مفتاح zoneinfo)
 TIME_ZONES = {
     "بغداد": "Asia/Baghdad",
     "العراق": "Asia/Baghdad",
@@ -3463,7 +3325,7 @@ TIME_ZONES = {
     "جنوب_افريقيا": "Africa/Johannesburg",
 }
 
-_time_task = None  # مرجع مهمة الحلقة
+_time_task = None
 
 
 def _time_digit_style():
@@ -3479,16 +3341,13 @@ def _resolve_zone(arg):
     a = (arg or "").strip()
     if not a:
         return None
-    # مطابقة مباشرة بقائمتنا
     if a in TIME_ZONES:
         return TIME_ZONES[a]
     if a in TIME_ZONES.values():
         return a
-    # بحث جزئي بالعربي
     for name, key in TIME_ZONES.items():
         if name in a or a in name:
             return key
-    # التحقق هل هو zoneinfo صالح
     try:
         ZoneInfo(a)
         return a
@@ -3556,7 +3415,6 @@ async def _(event):
         cur = _time_zone_key()
         names = [n for n, k in TIME_ZONES.items() if k == cur]
         label = (" / ".join(names)) if names else cur
-        # عينة من البلدان الشائعة
         sample = "\n".join(f"• `{n}` ⟶ `{k}`" for n, k in list(TIME_ZONES.items())[:12])
         return await edit_or_reply(
             event,
@@ -3582,7 +3440,6 @@ async def _(event):
 async def _(event):
     arg = (event.pattern_match.group(1) or "").strip()
     if not arg.isdigit():
-        # عرض كل شكل مع مثال حي من الوقت الحالي
         lines = []
         for k, v in DIGIT_SETS.items():
             ds_backup = _time_digit_style()
@@ -3621,11 +3478,8 @@ async def _(event):
     )
 
 
-# ============================================================
-#              التحديثات | GITHUB UPDATES
-# ============================================================
 
-GITHUB_REPO = "Hmza1112617/Hamza-Userbot"  # مستودع السورس
+GITHUB_REPO = "Hmza1112617/Hamza-Userbot"
 
 
 def _github_get(path):
@@ -3681,10 +3535,8 @@ RESTART_CMD = [sys.executable, os.path.abspath(__file__)]
 async def _(event):
     m = await event.edit("🔄 جاري تنزيل التحديث من GitHub...")
     try:
-        # حفظ مكان الرسالة لإرسال تأكيد بعد إعادة التشغيل
         db_set("settings", "restart_chat", event.chat_id)
         db_set("settings", "restart_msg", event.id)
-        # سحب آخر تغييرات (مع تجاوز تحذير ملكية المجلد لي works للكل)
         proc = await asyncio.to_thread(
             subprocess.run,
             ["git", "-c", "safe.directory=*", "pull", "origin", "clean-main"],
@@ -3693,7 +3545,6 @@ async def _(event):
         out = (proc.stdout or proc.stderr or "")[:1500]
         if proc.returncode != 0:
             await m.edit(f"- فشل السحب:\n`{out}`")
-            # تنظيف مؤشر إعادة التشغيل
             s = db_read("settings")
             s.pop("restart_chat", None)
             s.pop("restart_msg", None)
@@ -3701,7 +3552,6 @@ async def _(event):
             return
         await m.edit(f"✅ تم تنزيل التحديث:\n`{out}`\n🔁 جاري إعادة التشغيل...")
         await asyncio.sleep(1.5)
-        # إعادة تشغيل السورس
         os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
     except Exception as e:
         await edit_or_reply(m, f"- خطأ بالتحديث: `{e}`")
@@ -3714,7 +3564,7 @@ async def _ai_auto_watcher(event):
     if not db_get("settings", "ai_auto", False):
         return
     if db_get("settings", "ai_full", False):
-        return  # الوضع الشامل للأمر فقط، لا رد تلقائي بالخاص
+        return
     sender = await event.get_sender()
     if sender is None or getattr(sender, "bot", False):
         return
@@ -3730,16 +3580,12 @@ async def _ai_auto_watcher(event):
         pass
 
 
-# ============================================================
-#                    التشغيل | RUN
-# ============================================================
 
 
 async def _resume_persistent_tasks():
     """يستأنف المهام المستمرة بعد إعادة التشغيل من إعدادات settings.json"""
     global spam_running, spam_task, spam_typing_task, spam_delay, _time_task
 
-    # 1) السبام
     if db_get("settings", "spam_active", False):
         chat = db_get("settings", "spam_chat")
         reply_to = db_get("settings", "spam_reply")
@@ -3753,17 +3599,14 @@ async def _resume_persistent_tasks():
         else:
             db_set("settings", "spam_active", False)
 
-    # 2) الاسم الوقتي
     if db_get("settings", "time_active", False):
         if _time_task is None or _time_task.done():
             _time_task = asyncio.ensure_future(_time_loop())
         print("  ↻ تم استئناف الاسم الوقتي")
 
-    # 3) الشد (البلاغ المستمر)
     try:
         rcfg = db_read("report_cfg", {})
         if rcfg.get("running") and rcfg.get("target"):
-            # نشغّل الحلقة من داخل event وهمي بسيط عبر استدعاء مباشر للحلقة
             asyncio.ensure_future(_resume_report_loop(rcfg["target"]))
             print("  ↻ تم استئناف البلاغ المستمر (الشد)")
     except Exception:
@@ -3807,7 +3650,6 @@ async def _resume_report_loop(target):
 
 async def _startup():
     global flood_guard
-    # ضبط safe.directory تلقائياً ليتجنّب خطأ dubious ownership لأي مستخدم
     try:
         subprocess.run(
             ["git", "config", "--global", "--add", "safe.directory", BASE_DIR],
@@ -3828,9 +3670,7 @@ async def _startup():
     print(f"  حماية الفلود: {'🛡️ مفعلة' if flood_guard_enabled else '🚫 معطلة'}")
     print(f"  نوع الحساب: {'بريميوم' if is_premium else 'عادي'}")
     print("=" * 45)
-    # استئناف المهام المستمرة تلقائياً بعد إعادة التشغيل
     await _resume_persistent_tasks()
-    # رسالة بعد إعادة التشغيل
     rc = db_get("settings", "restart_chat")
     rm = db_get("settings", "restart_msg")
     if rc and rm:
@@ -3867,7 +3707,6 @@ def main():
             client.start()
     except Exception as e:
         err = str(e)
-        # إذا كانت بيانات api_id/api_hash خاطئة أعد طلبها تفاعلياً
         if "api_id/api_hash" in err or "API_ID_PUBLISHED" in err or "API_ID_INVALID" in err:
             print("✗ البيانات (API_ID/API_HASH) غير صحيحة.")
             print("  أدخل بياناتك الصحيحة من https://my.telegram.org/apps")
@@ -3881,7 +3720,6 @@ def main():
                 CONFIG["API_ID"] = int(aid)
                 CONFIG["API_HASH"] = ahash
                 _save_cfg_basic(CONFIG)
-                # إعادة بناء العميل بالقيم الجديدة
                 client = TelegramClient(
                     StringSession(CONFIG["STRING_SESSION"]),
                     CONFIG["API_ID"],
@@ -3901,7 +3739,6 @@ def main():
             print(f"خطأ بتسجيل الدخول: {e}")
             if new_login:
                 client.start()
-    # حفظ كود السيشن المولّد تلقائياً بعد أول تسجيل دخول
     if new_login:
         try:
             session_str = client.session.save()

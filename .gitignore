@@ -1,4 +1,3 @@
-# ملفات حساسة — لا تُرفع أبداً
 config.json
 data/ai_mem.json
 data/settings.json
@@ -15,7 +14,6 @@ __pycache__/
 .venv/
 venv/
 
-# ملفات البيانات الآمنة المسموح رفعها (غير حساسة)
 !data/insults.json
 !data/ai_tools.json
 !data/ai.json
