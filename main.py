@@ -3543,26 +3543,60 @@ RESTART_CMD = [sys.executable, os.path.abspath(__file__)]
 @cmd(r"تحديث$")
 async def _(event):
     m = await event.edit("🔄 جاري تنزيل التحديث من GitHub...")
+    db_set("settings", "restart_chat", event.chat_id)
+    db_set("settings", "restart_msg", event.id)
     try:
-        db_set("settings", "restart_chat", event.chat_id)
-        db_set("settings", "restart_msg", event.id)
-        proc = await asyncio.to_thread(
-            subprocess.run,
-            ["git", "-c", "safe.directory=*", "pull", "origin", "clean-main"],
-            cwd=BASE_DIR, capture_output=True, text=True, timeout=120,
+        import shutil, zipfile
+        git_path = shutil.which("git")
+        if git_path:
+            proc = await asyncio.to_thread(
+                subprocess.run,
+                [git_path, "-c", "safe.directory=*", "pull", "origin", "clean-main"],
+                cwd=BASE_DIR, capture_output=True, text=True, timeout=120,
+            )
+            out = (proc.stdout or proc.stderr or "")[:1500]
+            if proc.returncode != 0:
+                await m.edit(f"- فشل السحب عبر git:\n`{out}`\n↻ جاري المحاولة عبر التنزيل المباشر...")
+            else:
+                await m.edit(f"✅ تم تنزيل التحديث:\n`{out}`\n🔁 جاري إعادة التشغيل...")
+                await asyncio.sleep(1.5)
+                os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
+                return
+        # بديل: تنزيل zipball إذا git غير موجود أو فشل
+        import urllib.request, io
+        zip_url = f"https://api.github.com/repos/{GITHUB_REPO}/zipball/clean-main"
+        req = urllib.request.Request(zip_url, headers={"User-Agent": "HamzaUserbot", "Accept": "application/vnd.github+json"})
+        data = await asyncio.to_thread(
+            lambda: urllib.request.urlopen(req, timeout=120).read()
         )
-        out = (proc.stdout or proc.stderr or "")[:1500]
-        if proc.returncode != 0:
-            await m.edit(f"- فشل السحب:\n`{out}`")
-            s = db_read("settings")
-            s.pop("restart_chat", None)
-            s.pop("restart_msg", None)
-            db_write("settings", s)
-            return
-        await m.edit(f"✅ تم تنزيل التحديث:\n`{out}`\n🔁 جاري إعادة التشغيل...")
+        # استخراج الزب في مجلد مؤقت ثم نسخه
+        import tempfile
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            # المجلد الجذر داخل zip (مثل Hmza1112617-Hamza-Userbot-xxx/)
+            names = zf.namelist()
+            root = names[0].split("/")[0] if names else ""
+            for name in names:
+                parts = name.split("/", 1)
+                if len(parts) < 2:
+                    continue
+                rel_path = parts[1]
+                if not rel_path:
+                    continue
+                target = os.path.join(BASE_DIR, rel_path)
+                if name.endswith("/"):
+                    os.makedirs(target, exist_ok=True)
+                else:
+                    os.makedirs(os.path.dirname(target), exist_ok=True)
+                    with zf.open(name) as src, open(target, "wb") as dst:
+                        dst.write(src.read())
+        await m.edit("✅ تم تنزيل واستبدال الملفات ✓\n🔁 جاري إعادة التشغيل...")
         await asyncio.sleep(1.5)
         os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
     except Exception as e:
+        s = db_read("settings")
+        s.pop("restart_chat", None)
+        s.pop("restart_msg", None)
+        db_write("settings", s)
         await edit_or_reply(m, f"- خطأ بالتحديث: `{e}`")
 
 
@@ -3832,13 +3866,15 @@ async def _resume_report_loop(target):
 
 async def _startup():
     global flood_guard
-    try:
-        subprocess.run(
-            ["git", "config", "--global", "--add", "safe.directory", BASE_DIR],
-            cwd=BASE_DIR, capture_output=True, timeout=20,
-        )
-    except Exception:
-        pass
+    import shutil
+    if shutil.which("git"):
+        try:
+            subprocess.run(
+                ["git", "config", "--global", "--add", "safe.directory", BASE_DIR],
+                cwd=BASE_DIR, capture_output=True, timeout=20,
+            )
+        except Exception:
+            pass
     me = await client.get_me()
     _load_insults()
     build_source_info()
