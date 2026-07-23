@@ -533,10 +533,11 @@ MENU = {
 
     "م19": """**◂ محوّل الصوت (تغيير الصوت بمؤثرات):**
 
-`{p}صوتي` ◂ عرض قائمة التأثيرات المتاحة
-`{p}صوتي <رقم>` ◂ بالرد على مقطع صوتي/فيديو لتطبيق التأثير وتحويله لبصمة صوت
+`{p}صوتي` ◂ عرض قائمة التأثيرات المتاحة (25 تأثيراً)
+`{p}صوتي <رقم>` ◂ بالرد على مقطع صوتي/فيديو لتطبيق التأثير (عبر API خارجي)
+`{p}صوتي سجل` ◂ التسجيل في خادم الصوت لأول مرة
 
-**التأثيرات:** روبوت، همس، صدى، كهف، ذكر عميق، طفل/بنوته، فضائي، راديو، مشوش، عكس، سريع، بطيء، مكبر، غرفة، وحش، يرتجف، جوقة، امرأة، مخنث""",
+**التأثيرات:** سنجاب، عميق، روبوت، صدى، عكسي، همس، مكبر، هاتف، كهف، فضائي، هيليوم، شيطان، راديو، تحت الماء، وحش، 8-بت، فنطاز، بطيء، سريع، تأتأة، مكتوم، جوقة، سكران، تريمولو""",
 }
 
 
@@ -3591,84 +3592,169 @@ async def _ai_auto_watcher(event):
 #           محوّل الصوت | VOICE CHANGER (م19)
 # ============================================================
 
-VOICE_EFFECTS = {
-    "1": {"name": "روبوت", "desc": "صوت روبوتي", "filter": "afftfilt=real='hypot(re,im)*sin(0)':imag='hypot(re,im)*cos(0)':win_size=512:overlap=0.75"},
-    "2": {"name": "همس", "desc": "صوت همس خفيف", "filter": "afftfilt=real='hypot(re,im)*cos((random(0)*2-1)*2*3.14)':imag='hypot(re,im)*sin((random(1)*2-1)*2*3.14)':win_size=128:overlap=0.8"},
-    "3": {"name": "صدى", "desc": "صدى واسع", "filter": "aecho=0.8:0.9:1000:0.3"},
-    "4": {"name": "كهف", "desc": "صدى كهف عميق", "filter": "aecho=0.8:0.88:50:0.4"},
-    "5": {"name": "ذكر عميق", "desc": "صوت رجال عميق", "filter": "rubberband=pitch=0.7"},
-    "6": {"name": "طفل/بنوته", "desc": "صوت طفل أو بنت", "filter": "rubberband=pitch=1.8"},
-    "7": {"name": "فضائي", "desc": "صوت كائن فضائي", "filter": "vibrato=f=6:d=0.8,aphaser=type=t:speed=0.5:decay=0.7"},
-    "8": {"name": "راديو", "desc": "صوت راديو قديم", "filter": "highpass=f=300,lowpass=f=3400"},
-    "9": {"name": "مشوش", "desc": "صوت مقطع مشوش", "filter": "acrusher=bits=4:mode=log:aa=1"},
-    "10": {"name": "عكس", "desc": "يقلب الصوت من الآخر", "filter": "areverse"},
-    "11": {"name": "سريع", "desc": "صوت مسرع", "filter": "rubberband=tempo=1.5"},
-    "12": {"name": "بطيء", "desc": "صوت مبطئ", "filter": "rubberband=tempo=0.7"},
-    "13": {"name": "مكبر", "desc": "صوت مضخم 3 أضعاف", "filter": "volume=3.0"},
-    "14": {"name": "غرفة", "desc": "صدى غرفة صغيرة", "filter": "aecho=0.8:0.9:200:0.2"},
-    "15": {"name": "وحش", "desc": "صوت وحش مخيف", "filter": "rubberband=pitch=0.5:tempo=0.8"},
-    "16": {"name": "يرتجف", "desc": "صوت مرتجف", "filter": "tremolo=f=8:d=0.5"},
-    "17": {"name": "جوقة", "desc": "صوت جوقة متعددة", "filter": "chorus=0.5:0.9:50|60|70:0.4|0.3|0.2:0.25|0.4|0.3:2|2.3|1.3"},
-    "18": {"name": "امرأة", "desc": "صوت نسائي", "filter": "rubberband=pitch=1.3"},
-    "19": {"name": "مخنث", "desc": "صوت أنفي", "filter": "equalizer=f=1000:t=q:w=1:g=10,equalizer=f=3000:t=q:w=1:g=-10"},
-}
+_VC_API = "https://audio.ettacent.dev/api/v1"
+
+# تأثيرات الصوت (مطابقة لبلوقن ExteraGram Voice Changer v2)
+VC_EFFECTS = [
+    ("1", "سنجاب", "🐿️ صوت مرتفع كالسناجب"),
+    ("2", "عميق", "👹 صوت رجال عميق"),
+    ("3", "روبوت", "🤖 صوت روبوتي"),
+    ("4", "صدى", "🔊 صدى واسع"),
+    ("5", "عكسي", "⏪ قلب الصوت"),
+    ("6", "همس", "🤫 صوت همس خفيف"),
+    ("7", "مكبر", "📢 مكبر صوت"),
+    ("8", "هاتف", "📞 صوت هاتف قديم"),
+    ("9", "كهف", "🦇 صدى كهف عميق"),
+    ("10", "فضائي", "👽 صوت كائن فضائي"),
+    ("11", "هيليوم", "🎈 صوت مرتفع جداً"),
+    ("12", "شيطان", "😈 صوت شيطاني"),
+    ("13", "راديو", "📻 صوت راديو"),
+    ("14", "تحت الماء", "🌊 صوت تحت الماء"),
+    ("15", "وحش", "👺 صوت وحش مخيف"),
+    ("16", "8-بت", "🕹️ صوت ألعاب قديمة"),
+    ("17", "فنطاز", "📼 صوت فنطاز قديم"),
+    ("18", "بطيء", "🐢 صوت مبطئ"),
+    ("19", "سريع", "🐇 صوت مسرع"),
+    ("20", "تأتأة", "🔀 صوت متقطع"),
+    ("21", "مكتوم", "🥱 صوت مكتوم"),
+    ("22", "جوقة", "🎶 صوت جوقة متعددة"),
+    ("23", "سكران", "🍺 صوت سكران"),
+    ("24", "تريمولو", "📳 صوت مرتجف"),
+    ("25", "معطل", "🔇 بدون تأثير"),
+]
+VC_KEYS = ["chipmunk","deep","robot","echo","reverse","whisper","megaphone","telephone",
+           "cave","alien","helium","demon","radio","underwater","monster","eight_bit",
+           "vintage","slow","fast","stutter","muffled","chorus","drunk","tremolo","none"]
+
+
+async def _vc_ensure_token():
+    """يضمن وجود توكن API — يسجل إذا لزم الأمر"""
+    tok = db_get("settings", "vc_token")
+    if tok:
+        return tok
+    try:
+        me = await client.get_me()
+        uid = me.id
+    except Exception:
+        return None
+    try:
+        import requests as req
+        r = req.post(f"{_VC_API}/auth/register", params={"user_id": uid}, timeout=15)
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        code = data.get("code")
+        bot_username = data.get("bot_username")
+        if not code or not bot_username:
+            return None
+        # إرسال inline query للبوت للتحقق
+        try:
+            await client.inline_query(bot_username, code)
+        except Exception:
+            pass
+        # انتظار التوكن
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            try:
+                p = req.post(f"{_VC_API}/auth/poll", params={"user_id": uid, "code": code}, timeout=10)
+                if p.status_code == 200:
+                    tok = p.json().get("token")
+                    if tok:
+                        db_set("settings", "vc_token", tok)
+                        return tok
+                    return None
+                if p.status_code == 404:
+                    return None
+            except Exception:
+                pass
+            await asyncio.sleep(2)
+    except Exception:
+        pass
+    return None
+
+
+@cmd(r"صوتي سجل$")
+async def _(event):
+    m = await event.edit("🔄 جاري التسجيل في خادم الصوت...")
+    tok = await _vc_ensure_token()
+    if tok:
+        await edit_or_reply(m, "✅ تم التسجيل في خادم الصوت بنجاح ✓")
+    else:
+        await edit_or_reply(m, "❌ فشل التسجيل — تأكد من اتصال الإنترنت")
 
 
 @cmd(r"صوتي(?:\s|$)([\s\S]*)")
 async def _(event):
     arg = (event.pattern_match.group(1) or "").strip()
     if not arg:
-        lines = "\n".join(f"`{k}` ◂ {v['name']} — {v['desc']}" for k, v in VOICE_EFFECTS.items())
+        lines = "\n".join(f"`{num}` ◂ {emo} {name}  — {desc}" for num, name, emo, desc in VC_EFFECTS)
         return await edit_or_reply(
             event,
-            f"**◂ قائمة تأثيرات الصوت:**\n\n{lines}\n\n"
+            f"**◂ قائمة تأثيرات الصوت (Voice Changer):**\n\n{lines}\n\n"
             f"للتطبيق: رد على ملف صوتي وأرسل `{PREFIX}صوتي <رقم>`\n"
-            f"مثال: `{PREFIX}صوتي 1` (روبوت)",
+            f"مثال: `{PREFIX}صوتي 3` (روبوت)\n"
+            f"للتسجيل أول مرة: `{PREFIX}صوتي سجل`",
         )
-    if arg not in VOICE_EFFECTS:
-        return await edit_or_reply(event, f"❌ رقم تأثير غير موجود. اكتب `{PREFIX}صوتي` لعرض القائمة")
+    if arg == "سجل":
+        return
+    idx = -1
+    try:
+        idx = int(arg) - 1
+    except ValueError:
+        pass
+    if idx < 0 or idx >= len(VC_EFFECTS):
+        return await edit_or_reply(event, f"❌ رقم غير صالح (1-{len(VC_EFFECTS)}). اكتب `{PREFIX}صوتي` لعرض القائمة")
     reply = await event.get_reply_message()
     if not reply or not (reply.audio or reply.voice or reply.video or reply.document or reply.video_note):
-        return await edit_delete(event, f"- رد على ملف صوتي/فيديو/أغنية أولاً", 8)
-    effect = VOICE_EFFECTS[arg]
-    m = await event.edit(f"🎤 جاري تطبيق تأثير: {effect['name']}...")
+        return await edit_delete(event, "- رد على ملف صوتي/فيديو/أغنية أولاً", 8)
+    num, name, emo, desc = VC_EFFECTS[idx]
+    effect_key = VC_KEYS[idx]
+    if effect_key == "none":
+        return await edit_or_reply(event, "🔇 التأثير معطل — اختر تأثيراً آخر")
+    m = await event.edit(f"{emo} جاري تطبيق تأثير: {name}...")
     tmp_in = None
     tmp_out = None
     try:
+        # التأكد من التوكن
+        tok = await _vc_ensure_token()
+        if not tok:
+            return await m.edit("❌ لم يتم التسجيل في خادم الصوت. أرسل `.صوتي سجل` أولاً")
         tmp_in = await event.client.download_media(reply.media)
-        tmp_out = tmp_in + "_voice.ogg"
-        proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-i", tmp_in,
-            "-af", effect["filter"],
-            "-c:a", "libopus",
-            "-b:a", "32k", "-ar", "48000", "-ac", "1",
-            "-y", tmp_out,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-        await asyncio.wait_for(proc.wait(), timeout=120)
-        if proc.returncode != 0:
-            return await m.edit(f"❌ فشل تطبيق التأثير — تأكد من أن الملف صالح")
+        tmp_out = os.path.join(DATA_DIR, f"vc_{int(time.time()*1000)}.ogg")
+        # إرسال الملف للـ API
+        import requests as req
+        with open(tmp_in, "rb") as f:
+            files = {"audio": (os.path.basename(tmp_in), f, "audio/ogg")}
+            data = {"effect": effect_key, "media_type": "voice"}
+            headers = {"X-Auth-Token": tok}
+            resp = req.post(f"{_VC_API}/process", files=files, data=data, headers=headers, timeout=120)
+        if resp.status_code == 401:
+            db_set("settings", "vc_token", "")
+            return await m.edit("❌ التوكن منتهي — أرسل `.صوتي سجل` لإعادة التسجيل")
+        if resp.status_code != 200 or len(resp.content) < 100:
+            return await m.edit(f"❌ فشل المعالجة (رمز {resp.status_code})")
+        with open(tmp_out, "wb") as f:
+            f.write(resp.content)
+        # إرسال النتيجة
         try:
-            r = await asyncio.create_subprocess_exec(
+            rp = await asyncio.create_subprocess_exec(
                 "ffprobe", "-i", tmp_out, "-show_entries", "format=duration",
                 "-v", "quiet", "-of", "csv=p=0",
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
-            out, _ = await asyncio.wait_for(r.communicate(), timeout=15)
+            out, _ = await asyncio.wait_for(rp.communicate(), timeout=15)
             dur = int(float(out.decode().strip())) if out else 0
         except Exception:
             dur = 0
         await event.client.send_file(
             event.chat_id, tmp_out,
             voice_note=True,
-            attributes=[types.DocumentAttributeAudio(
-                voice=True, duration=dur,
-            )],
+            attributes=[types.DocumentAttributeAudio(voice=True, duration=dur)],
             reply_to=reply.id,
         )
-        await m.delete()
-    except asyncio.TimeoutError:
-        await m.edit("❌ انتهت مهلة التحويل (الملف كبير جداً)")
+        try:
+            await m.delete()
+        except Exception:
+            pass
     except Exception as e:
         await m.edit(f"❌ خطأ: {e}")
     finally:
