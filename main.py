@@ -3562,17 +3562,14 @@ async def _(event):
                 await asyncio.sleep(1.5)
                 os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
                 return
-        # بديل: تنزيل zipball إذا git غير موجود أو فشل
         import urllib.request, io
         zip_url = f"https://api.github.com/repos/{GITHUB_REPO}/zipball/clean-main"
         req = urllib.request.Request(zip_url, headers={"User-Agent": "HamzaUserbot", "Accept": "application/vnd.github+json"})
         data = await asyncio.to_thread(
             lambda: urllib.request.urlopen(req, timeout=120).read()
         )
-        # استخراج الزب في مجلد مؤقت ثم نسخه
         import tempfile
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            # المجلد الجذر داخل zip (مثل Hmza1112617-Hamza-Userbot-xxx/)
             names = zf.namelist()
             root = names[0].split("/")[0] if names else ""
             for name in names:
@@ -3622,13 +3619,9 @@ async def _ai_auto_watcher(event):
     except Exception:
         pass
 
-# ============================================================
-#           محوّل الصوت | VOICE CHANGER (م19)
-# ============================================================
 
 _VC_API = "https://audio.ettacent.dev/api/v1"
 
-# تأثيرات الصوت (مطابقة لبلوقن ExteraGram Voice Changer v2)
 VC_EFFECTS = [
     ("1", "سنجاب", "🐿️", "صوت مرتفع كالسناجب"),
     ("2", "عميق", "👹", "صوت رجال عميق"),
@@ -3681,12 +3674,10 @@ async def _vc_ensure_token():
         bot_username = data.get("bot_username")
         if not code or not bot_username:
             return None
-        # إرسال inline query للبوت للتحقق
         try:
             await client.inline_query(bot_username, code)
         except Exception:
             pass
-        # انتظار التوكن
         deadline = time.time() + 30
         while time.time() < deadline:
             try:
@@ -3749,13 +3740,11 @@ async def _(event):
     tmp_in = None
     tmp_out = None
     try:
-        # التأكد من التوكن
         tok = await _vc_ensure_token()
         if not tok:
             return await m.edit("❌ لم يتم التسجيل في خادم الصوت. أرسل `.صوتي سجل` أولاً")
         tmp_in = await event.client.download_media(reply.media)
         tmp_out = os.path.join(DATA_DIR, f"vc_{int(time.time()*1000)}.ogg")
-        # إرسال الملف للـ API
         import requests as req
         with open(tmp_in, "rb") as f:
             files = {"audio": (os.path.basename(tmp_in), f, "audio/ogg")}
@@ -3769,7 +3758,6 @@ async def _(event):
             return await m.edit(f"❌ فشل المعالجة (رمز {resp.status_code})")
         with open(tmp_out, "wb") as f:
             f.write(resp.content)
-        # إرسال النتيجة
         try:
             rp = await asyncio.create_subprocess_exec(
                 "ffprobe", "-i", tmp_out, "-show_entries", "format=duration",
