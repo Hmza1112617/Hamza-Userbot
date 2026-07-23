@@ -1405,6 +1405,16 @@ _DEFAULT_INSULTS = {
         "{sifat}، {sakhira}",
         "تعرف انت ايش؟ {sakhira}",
     ],
+    "حشوات": [
+        "منفوخ", "ممزق", "متسع", "ضيق", "أسود", "متورم", "منكمش", "مبلل",
+        "مقرف", "منتن", "لزج", "ساخن", "ملتهب", "محروق", "منهار",
+    ],
+    "قوالب_فتحات": [
+        "تعرف امك كانت فتحتها كذا ( )، بعد ما شافت زبي صار كذا ( )",
+        "امك يوم شافت زبي قالت ( )، اختك قالت ( )، انا قلت ( )",
+        "كس امك قبل كان ( )، بعد ما سويته صار ( )",
+        "اختك تقول فتحتها ( )، وانا اقولها لا ( )",
+    ],
 }
 
 INSULTS = {}
@@ -1427,22 +1437,42 @@ def insult_combos():
     n = len(INSULTS.get("templates", [1]))
     for k in ("qrayb", "feal", "jomla", "sifat", "laheq", "sakhira"):
         n *= max(len(INSULTS.get(k, [""])), 1)
+    # قوالب الفتحات كل فتحة يمكن ملؤها بأي عنصر من حشوات
+    fillers = len(INSULTS.get("حشوات") or [1])
+    for ftpl in INSULTS.get("قوالب_فتحات") or []:
+        slots = ftpl.count("(")
+        n += fillers ** max(slots, 1)
     return n
+
+
+def _fill_blanks(text):
+    """يملأ كل ( ) في النص بعنصر عشوائي من حشوات"""
+    fillers = INSULTS.get("حشوات") or [""]
+    while "(" in text and ")" in text:
+        text = text.replace("(", random.choice(fillers), 1).replace(")", "", 1)
+    return text
 
 
 def generate_insult():
     """يولّد جملة سب عشوائية من القوالب والمكوّنات (من JSON)"""
     if not INSULTS:
         _load_insults()
-    tpl = random.choice(INSULTS["templates"])
-    text = tpl.format(
-        qrayb=random.choice(INSULTS.get("qrayb") or [""]),
-        feal=random.choice(INSULTS.get("feal") or [""]),
-        jomla=random.choice(INSULTS.get("jomla") or [""]),
-        sifat=random.choice(INSULTS.get("sifat") or [""]),
-        laheq=random.choice(INSULTS.get("laheq") or [""]),
-        sakhira=random.choice(INSULTS.get("sakhira") or [""]),
-    )
+    # اختيار عشوائي: مرة من templates العادية، مرة من قوالب_فتحات
+    ftpl = INSULTS.get("قوالب_فتحات") or []
+    use_fillable = ftpl and random.random() < 0.4
+    if use_fillable:
+        text = random.choice(ftpl)
+        text = _fill_blanks(text)
+    else:
+        tpl = random.choice(INSULTS["templates"])
+        text = tpl.format(
+            qrayb=random.choice(INSULTS.get("qrayb") or [""]),
+            feal=random.choice(INSULTS.get("feal") or [""]),
+            jomla=random.choice(INSULTS.get("jomla") or [""]),
+            sifat=random.choice(INSULTS.get("sifat") or [""]),
+            laheq=random.choice(INSULTS.get("laheq") or [""]),
+            sakhira=random.choice(INSULTS.get("sakhira") or [""]),
+        )
     return re.sub(r"\s+", " ", text).strip("، ").strip()
 
 
