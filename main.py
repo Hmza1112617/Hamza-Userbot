@@ -88,8 +88,8 @@ def load_config():
         print("  إعداد سورس حمزة — أدخل بياناتك:")
         print("=" * 45)
         try:
-            aid = input("🔑 API_ID: ").strip()
-            ahash = input("🔑 API_HASH: ").strip()
+            aid = input("* API_ID: ").strip()
+            ahash = input("* API_HASH: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("تم الإلغاء")
             sys.exit(1)
@@ -265,7 +265,7 @@ async def _send_as_file(event, text):
         file.name = "result.txt"
         reply = await event.get_reply_message()
         target = reply or event
-        sent = await target.reply("الناتج طويل/كبير — تم إرساله كملف 📄", file=file)
+        sent = await target.reply("الناتج طويل/كبير — تم إرساله كملف ", file=file)
         try:
             await event.delete()
         except Exception:
@@ -360,182 +360,182 @@ def readable_time(seconds):
 
 
 MENU_MAIN = f"""**[ سورس حمزة ]**
-✦┅━╍━╍╍━━╍━━╍━┅✦
+=========================
 
 مرحبا بك عزيزي {OWNER_NAME}
 هذه قائمة أقسام الأوامر — أرسل رقم القسم:
 
-`{PREFIX}م1` ◂ أوامر الإدارة
-`{PREFIX}م2` ◂ أوامر المجموعة
-`{PREFIX}م3` ◂ أوامر الكشف والايدي
-`{PREFIX}م4` ◂ أوامر الردود
-`{PREFIX}م5` ◂ أوامر الترحيب
-`{PREFIX}م6` ◂ أوامر حماية الخاص
-`{PREFIX}م7` ◂ أوامر الإذاعة
-`{PREFIX}م8` ◂ أوامر البوت
-`{PREFIX}م9` ◂ أوامر المنع والترجمة
-`{PREFIX}م10` ◂ أوامر السبام والصملات
-`{PREFIX}م11` ◂ أوامر البروفايل
-`{PREFIX}م12` ◂ أوامر الصيغ
-`{PREFIX}م13` ◂ أوامر التسلية
-`{PREFIX}م14` ◂ أوامر التحكم
-`{PREFIX}م15` ◂ أوامر الذكاء الاصطناعي
-`{PREFIX}م16` ◂ أوامر التحديثات
-`{PREFIX}م17` ◂ باند و شد (فحص الروابط)
-`{PREFIX}م18` ◂ الاسم الوقتي (وقت حي بجانب اسمك)
-`{PREFIX}م19` ◂ محوّل الصوت (تغيير الصوت بمؤثرات)"""
+`{PREFIX}م1` | أوامر الإدارة
+`{PREFIX}م2` | أوامر المجموعة
+`{PREFIX}م3` | أوامر الكشف والايدي
+`{PREFIX}م4` | أوامر الردود
+`{PREFIX}م5` | أوامر الترحيب
+`{PREFIX}م6` | أوامر حماية الخاص
+`{PREFIX}م7` | أوامر الإذاعة
+`{PREFIX}م8` | أوامر البوت
+`{PREFIX}م9` | أوامر المنع والترجمة
+`{PREFIX}م10` | أوامر السبام والصملات
+`{PREFIX}م11` | أوامر البروفايل
+`{PREFIX}م12` | أوامر الصيغ
+`{PREFIX}م13` | أوامر التسلية
+`{PREFIX}م14` | أوامر التحكم
+`{PREFIX}م15` | أوامر الذكاء الاصطناعي
+`{PREFIX}م16` | أوامر التحديثات
+`{PREFIX}م17` | باند و شد (فحص الروابط)
+`{PREFIX}م18` | الاسم الوقتي (وقت حي بجانب اسمك)
+`{PREFIX}م19` | محوّل الصوت (تغيير الصوت بمؤثرات)"""
 
 MENU = {
-    "م1": """**◂ أوامر الإدارة :**
+    "م1": """**| أوامر الإدارة :**
 
-`{p}حظر` ◂ بالرد أو المعرف لحظر شخص
-`{p}الغاء حظر` ◂ لفك حظر شخص
-`{p}كتم` ◂ لكتم شخص
-`{p}الغاء كتم` ◂ لفك كتم شخص
-`{p}طرد` ◂ لطرد شخص من المجموعة
-`{p}رفع مشرف` <لقب> ◂ لرفع شخص مشرف
-`{p}تنزيل مشرف` ◂ لتنزيل مشرف
-`{p}تثبيت` ◂ لتثبيت رسالة بالرد
-`{p}الغاء تثبيت` ◂ لإلغاء التثبيت
-`{p}مسح` <عدد> ◂ لحذف رسائل
-`{p}تحذير` ◂ لتحذير عضو
-`{p}التحذيرات` ◂ لعرض تحذيرات عضو
-`{p}حذف التحذيرات` ◂ لمسح تحذيرات عضو""",
-    "م2": """**◂ أوامر المجموعة :**
+`{p}حظر` | بالرد أو المعرف لحظر شخص
+`{p}الغاء حظر` | لفك حظر شخص
+`{p}كتم` | لكتم شخص
+`{p}الغاء كتم` | لفك كتم شخص
+`{p}طرد` | لطرد شخص من المجموعة
+`{p}رفع مشرف` <لقب> | لرفع شخص مشرف
+`{p}تنزيل مشرف` | لتنزيل مشرف
+`{p}تثبيت` | لتثبيت رسالة بالرد
+`{p}الغاء تثبيت` | لإلغاء التثبيت
+`{p}مسح` <عدد> | لحذف رسائل
+`{p}تحذير` | لتحذير عضو
+`{p}التحذيرات` | لعرض تحذيرات عضو
+`{p}حذف التحذيرات` | لمسح تحذيرات عضو""",
+    "م2": """**| أوامر المجموعة :**
 
-`{p}المشرفين` ◂ لعرض مشرفي المجموعة
-`{p}الاعضاء` ◂ لعرض عدد الأعضاء
-`{p}معلومات` ◂ لعرض معلومات المجموعة
-`{p}البوتات` ◂ لعرض البوتات في المجموعة""",
-    "م3": """**◂ أوامر الكشف والايدي :**
+`{p}المشرفين` | لعرض مشرفي المجموعة
+`{p}الاعضاء` | لعرض عدد الأعضاء
+`{p}معلومات` | لعرض معلومات المجموعة
+`{p}البوتات` | لعرض البوتات في المجموعة""",
+    "م3": """**| أوامر الكشف والايدي :**
 
-`{p}الايدي` ◂ بالرد أو المعرف لعرض الايدي
-`{p}كشف` ◂ لعرض معلومات مستخدم
-`{p}صورة` ◂ لجلب صورة مستخدم""",
-    "م4": """**◂ أوامر الردود :**
+`{p}الايدي` | بالرد أو المعرف لعرض الايدي
+`{p}كشف` | لعرض معلومات مستخدم
+`{p}صورة` | لجلب صورة مستخدم""",
+    "م4": """**| أوامر الردود :**
 
-`{p}اضف رد` <كلمة> ◂ بالرد لإضافة رد على كلمة
-`{p}حذف رد` <كلمة> ◂ لحذف رد
-`{p}الردود` ◂ لعرض جميع الردود
-`{p}مسح الردود` ◂ لحذف كل الردود""",
-    "م5": """**◂ أوامر الترحيب :**
+`{p}اضف رد` <كلمة> | بالرد لإضافة رد على كلمة
+`{p}حذف رد` <كلمة> | لحذف رد
+`{p}الردود` | لعرض جميع الردود
+`{p}مسح الردود` | لحذف كل الردود""",
+    "م5": """**| أوامر الترحيب :**
 
-`{p}ضبط ترحيب` <النص> ◂ لضبط رسالة ترحيب
-`{p}الترحيب` ◂ لعرض الترحيب الحالي
-`{p}حذف الترحيب` ◂ لإلغاء الترحيب
+`{p}ضبط ترحيب` <النص> | لضبط رسالة ترحيب
+`{p}الترحيب` | لعرض الترحيب الحالي
+`{p}حذف الترحيب` | لإلغاء الترحيب
 (المتغيرات: {{name}} {{title}} {{count}})""",
-    "م6": """**◂ أوامر حماية الخاص :**
+    "م6": """**| أوامر حماية الخاص :**
 
-`{p}الحماية تشغيل` ◂ لتشغيل حماية الخاص
-`{p}الحماية تعطيل` ◂ لتعطيل حماية الخاص
-`{p}سماح` ◂ للسماح لشخص بالخاص
-`{p}رفض` ◂ لرفض شخص من الخاص
-`{p}المسموحين` ◂ لعرض المسموح لهم""",
-    "م7": """**◂ أوامر الإذاعة :**
+`{p}الحماية تشغيل` | لتشغيل حماية الخاص
+`{p}الحماية تعطيل` | لتعطيل حماية الخاص
+`{p}سماح` | للسماح لشخص بالخاص
+`{p}رفض` | لرفض شخص من الخاص
+`{p}المسموحين` | لعرض المسموح لهم""",
+    "م7": """**| أوامر الإذاعة :**
 
-`{p}للكروبات` <النص> ◂ لنشر رسالة بكل مجموعاتك
-`{p}للخاص` <النص> ◂ لإرسال رسالة لكل محادثاتك الخاصة""",
-    "م8": """**◂ أوامر البوت :**
+`{p}للكروبات` <النص> | لنشر رسالة بكل مجموعاتك
+`{p}للخاص` <النص> | لإرسال رسالة لكل محادثاتك الخاصة""",
+    "م8": """**| أوامر البوت :**
 
-`{p}فحص` ◂ لعرض معلومات السورس
-`{p}بنك` ◂ لعرض سرعة الاستجابة
-`{p}اعادة تشغيل` ◂ لإعادة تشغيل السورس
-`{p}الوقت` ◂ لعرض مدة التشغيل""",
-    "م9": """**◂ أوامر المنع والترجمة :**
+`{p}فحص` | لعرض معلومات السورس
+`{p}بنك` | لعرض سرعة الاستجابة
+`{p}اعادة تشغيل` | لإعادة تشغيل السورس
+`{p}الوقت` | لعرض مدة التشغيل""",
+    "م9": """**| أوامر المنع والترجمة :**
 
-`{p}منع` <كلمة> ◂ لمنع كلمة في المجموعة
-`{p}الغاء منع` <كلمة> ◂ لإلغاء منع كلمة
-`{p}قائمة المنع` ◂ لعرض الكلمات الممنوعة
-`{p}ترجمة` <كود> ◂ بالرد لترجمة النص""",
-    "م10": """**◂ أوامر السبام والصملات :**
+`{p}منع` <كلمة> | لمنع كلمة في المجموعة
+`{p}الغاء منع` <كلمة> | لإلغاء منع كلمة
+`{p}قائمة المنع` | لعرض الكلمات الممنوعة
+`{p}ترجمة` <كود> | بالرد لترجمة النص""",
+    "م10": """**| أوامر السبام والصملات :**
 
-`{p}نيكه` ◂ سبام سب مولّد تلقائياً (بالرد يستهدف)
-`{p}خلاص` ◂ لإيقاف السبام
-`{p}سرعه` <ثواني> ◂ لضبط سرعة الإرسال
-`{p}تتبع` ◂ رد تلقائي بالسب على أي رسالة خاصة
-`{p}كافي` ◂ لإيقاف الرد التلقائي
-`{p}معاينة سب` ◂ لعرض عينات من المولّد
-`{p}عدد السب` ◂ لعرض عدد التركيبات الممكنة
-`{p}اضف سب` <النوع> <النص> ◂ لإثراء المكتبة
+`{p}نيكه` | سبام سب مولّد تلقائياً (بالرد يستهدف)
+`{p}خلاص` | لإيقاف السبام
+`{p}سرعه` <ثواني> | لضبط سرعة الإرسال
+`{p}تتبع` | رد تلقائي بالسب على أي رسالة خاصة
+`{p}كافي` | لإيقاف الرد التلقائي
+`{p}معاينة سب` | لعرض عينات من المولّد
+`{p}عدد السب` | لعرض عدد التركيبات الممكنة
+`{p}اضف سب` <النوع> <النص> | لإثراء المكتبة
   (الأنواع: قريب | فعل | جمله | صفه | لاحقه | ساخره | قالب)
-`{p}حماية الفلود` ◂ لتشغيل/إيقاف الحماية
-`{p}الفلود` ◂ لعرض إحصائيات الحماية
-`{p}تحديد` ◂ بالرد لتحديد رسالة من المحفوظات
-`{p}تشغيل التحويل` ◂ لبدء التحويل من المحفوظات
-`{p}ايقاف التحويل` ◂ لإيقاف التحويل
-`{p}ديلاي` <ثواني> ◂ لضبط زمن التحويل""",
-    "م11": """**◂ أوامر البروفايل :**
+`{p}حماية الفلود` | لتشغيل/إيقاف الحماية
+`{p}الفلود` | لعرض إحصائيات الحماية
+`{p}تحديد` | بالرد لتحديد رسالة من المحفوظات
+`{p}تشغيل التحويل` | لبدء التحويل من المحفوظات
+`{p}ايقاف التحويل` | لإيقاف التحويل
+`{p}ديلاي` <ثواني> | لضبط زمن التحويل""",
+    "م11": """**| أوامر البروفايل :**
 
-`{p}تغيير اسم` <الاسم> ◂ لتغيير اسمك
-`{p}تغيير بايو` <النص> ◂ لتغيير نبذتك
-`{p}تغيير صورة` ◂ بالرد لتغيير صورتك
-`{p}حسابي` ◂ لعرض معلومات حسابك""",
-    "م12": """**◂ أوامر الصيغ :**
+`{p}تغيير اسم` <الاسم> | لتغيير اسمك
+`{p}تغيير بايو` <النص> | لتغيير نبذتك
+`{p}تغيير صورة` | بالرد لتغيير صورتك
+`{p}حسابي` | لعرض معلومات حسابك""",
+    "م12": """**| أوامر الصيغ :**
 
-`{p}ملصق` ◂ بالرد على صورة لتحويلها ملصق
-`{p}صورة` ◂ بالرد على ملصق لتحويله صورة
-`{p}صوت` ◂ بالرد على مقطع/أغنية/صوت/فيديو لتحويله بصمة صوت (voice)""",
-    "م13": """**◂ أوامر التسلية :**
+`{p}ملصق` | بالرد على صورة لتحويلها ملصق
+`{p}صورة` | بالرد على ملصق لتحويله صورة
+`{p}صوت` | بالرد على مقطع/أغنية/صوت/فيديو لتحويله بصمة صوت (voice)""",
+    "م13": """**| أوامر التسلية :**
 
-`{p}نسبة الحب` ◂ لعرض نسبة الحب
-`{p}نسبة الغباء` ◂ لعرض نسبة الغباء
-`{p}قلوب` ◂ لعرض قلوب متحركة
-`{p}عد` <رقم> ◂ للعد التنازلي
-`{p}نرد` ◂ لرمي النرد""",
-    "م14": """**◂ أوامر التحكم :**
+`{p}نسبة الحب` | لعرض نسبة الحب
+`{p}نسبة الغباء` | لعرض نسبة الغباء
+`{p}قلوب` | لعرض قلوب متحركة
+`{p}عد` <رقم> | للعد التنازلي
+`{p}نرد` | لرمي النرد""",
+    "م14": """**| أوامر التحكم :**
 
-`{p}التحكم تشغيل` ◂ لتفعيل تحكم مستخدمين آخرين
-`{p}التحكم تعطيل` ◂ لتعطيل التحكم
-`{p}اضف متحكم` ◂ بالرد لإضافة متحكم
-`{p}ازالة متحكم` ◂ بالرد لإزالة متحكم
-`{p}المتحكمين` ◂ لعرض المتحكمين""",
-    "م15": """**◂ أوامر الذكاء الاصطناعي (للمالك فقط):**
+`{p}التحكم تشغيل` | لتفعيل تحكم مستخدمين آخرين
+`{p}التحكم تعطيل` | لتعطيل التحكم
+`{p}اضف متحكم` | بالرد لإضافة متحكم
+`{p}ازالة متحكم` | بالرد لإزالة متحكم
+`{p}المتحكمين` | لعرض المتحكمين""",
+    "م15": """**| أوامر الذكاء الاصطناعي (للمالك فقط):**
 
-`{p}ذكاء` <نص> ◂ محادثة تفاعلية + تنفيذ أدوات Telethon (JSON) ورد النتيجة
-`{p}ذكاء مفعل` ◂ تفعيل الوضع الشامل للأمر فقط (يحقن تعريف الأدوات بـ JSON parameters وينفّذ أي أداة بلا حدود). لا رد تلقائي بالخاص
-`{p}ذكاء تشغيل` ◂ رد تلقائي بالخاص (بدون أدوات)
-`{p}ذكاء تعطيل` ◂ إيقاف الرد التلقائي
-`{p}ذكاء سياق` <رقم> ◂ عدد رسائل السياق (الافتراضي 50)
-`{p}ذكاء ذاكرة` ◂ عرض الذاكرة | `{p}ذكاء ذاكرة مسح` لمسحها
-`{p}ذكاء جلسة` ◂ عرض/مسح جلسة المحادثة التفاعلية
-`{p}دليل الذكاء` ◂ توليد دليل السورس | `{p}ادوات الذكاء` لعرض الأدوات
-`{p}تعليمات الذكاء` ◂ عرض التعليمات | `<نص>` تعديل | `افتراضي` إرجاع
+`{p}ذكاء` <نص> | محادثة تفاعلية + تنفيذ أدوات Telethon (JSON) ورد النتيجة
+`{p}ذكاء مفعل` | تفعيل الوضع الشامل للأمر فقط (يحقن تعريف الأدوات بـ JSON parameters وينفّذ أي أداة بلا حدود). لا رد تلقائي بالخاص
+`{p}ذكاء تشغيل` | رد تلقائي بالخاص (بدون أدوات)
+`{p}ذكاء تعطيل` | إيقاف الرد التلقائي
+`{p}ذكاء سياق` <رقم> | عدد رسائل السياق (الافتراضي 50)
+`{p}ذكاء ذاكرة` | عرض الذاكرة | `{p}ذكاء ذاكرة مسح` لمسحها
+`{p}ذكاء جلسة` | عرض/مسح جلسة المحادثة التفاعلية
+`{p}دليل الذكاء` | توليد دليل السورس | `{p}ادوات الذكاء` لعرض الأدوات
+`{p}تعليمات الذكاء` | عرض التعليمات | `<نص>` تعديل | `افتراضي` إرجاع
 
 ملاحظة: في الوضع الشامل يكتب الذكاء استدعاء أداة JSON (بما فيها raw_tl بلا قيود) فينفّذها الكود ويعرض النتيجة ويتابع المحادثة.""",
-    "م16": """**◂ أوامر التحديثات :**
+    "م16": """**| أوامر التحديثات :**
 
-`{p}تحديث` ◂ لتنزيل آخر تحديث من GitHub وإعادة التشغيل
-`{p}تحديثات` ◂ لعرض آخر التحديثات والإضافات من GitHub
-`{p}اخر_تحديث` ◂ لعرض آخر إصدار منشور""",
-    "م17": """**◂ باند و شد (فحص الروابط والمجموعات):**
+`{p}تحديث` | لتنزيل آخر تحديث من GitHub وإعادة التشغيل
+`{p}تحديثات` | لعرض آخر التحديثات والإضافات من GitHub
+`{p}اخر_تحديث` | لعرض آخر إصدار منشور""",
+    "م17": """**| باند و شد (فحص الروابط والمجموعات):**
 
 **الفحص:**
-`{p}فحص` <رابط/يوزر/آيدي> ◂ لفحص إن كان محظوراً/منتهياً/سكام
-`{p}فحص_دفعه` <رابط> ◂ فحص دعوة (ينضم مؤقتاً ويفحص)
-`{p}فحص_مجموعه` ◂ فحص المجموعة الحالية
+`{p}فحص` <رابط/يوزر/آيدي> | لفحص إن كان محظوراً/منتهياً/سكام
+`{p}فحص_دفعه` <رابط> | فحص دعوة (ينضم مؤقتاً ويفحص)
+`{p}فحص_مجموعه` | فحص المجموعة الحالية
 
  **الشد الداخلي (بلاغ مستمر):**
-`{p}شد_هدف` <رابط/يوزر> ◂ يضع هدف البلاغ
-`{p}شد_نوع` <نوع> ◂ نوع المخالفة (سبام/اباحي/عنف/تحرش/حقوق/وهمي/غير_قانوني/اخر)
-`{p}شد_رساله` <نص> ◂ نص رسالة البلاغ
-`{p}شد_سرعه` <ثواني> ◂ سرعة التأخير بين البلاغات (1-60)
-`{p}شد` <رابط/يوزر> ◂ يبدأ البلاغ المستمر (يفحص كل دورة هل الهدف محظور)
-`{p}شد_ايقاف` ◂ يوقف البلاغ المستمر
-`{p}شد_اعداد` ◂ عرض الإعدادات""",
+`{p}شد_هدف` <رابط/يوزر> | يضع هدف البلاغ
+`{p}شد_نوع` <نوع> | نوع المخالفة (سبام/اباحي/عنف/تحرش/حقوق/وهمي/غير_قانوني/اخر)
+`{p}شد_رساله` <نص> | نص رسالة البلاغ
+`{p}شد_سرعه` <ثواني> | سرعة التأخير بين البلاغات (1-60)
+`{p}شد` <رابط/يوزر> | يبدأ البلاغ المستمر (يفحص كل دورة هل الهدف محظور)
+`{p}شد_ايقاف` | يوقف البلاغ المستمر
+`{p}شد_اعداد` | عرض الإعدادات""",
 
-    "م18": """**◂ الاسم الوقتي (وقت حي بجانب اسمك):**
+    "م18": """**| الاسم الوقتي (وقت حي بجانب اسمك):**
 
-`{p}وقتي` ◂ عرض الحالة والمعاينة والتوقيت
-`{p}وقتي تشغيل` ◂ يفعّل التحديث التلقائي كل دقيقة
-`{p}وقتي ايقاف` ◂ يوقفه
-`{p}وقتي شكل <رقم>` ◂ يختار شكل زخرفة الأرقام (مع أمثلة حية)
-`{p}وقتي توقيت <بلد/مدينة>` ◂ يختار التوقيت (بغداد/السعودية/مصر/لندن/...)""",
+`{p}وقتي` | عرض الحالة والمعاينة والتوقيت
+`{p}وقتي تشغيل` | يفعّل التحديث التلقائي كل دقيقة
+`{p}وقتي ايقاف` | يوقفه
+`{p}وقتي شكل <رقم>` | يختار شكل زخرفة الأرقام (مع أمثلة حية)
+`{p}وقتي توقيت <بلد/مدينة>` | يختار التوقيت (بغداد/السعودية/مصر/لندن/...)""",
 
-    "م19": """**◂ محوّل الصوت (تغيير الصوت بمؤثرات):**
+    "م19": """**| محوّل الصوت (تغيير الصوت بمؤثرات):**
 
-`{p}صوتي` ◂ عرض قائمة التأثيرات المتاحة (25 تأثيراً)
-`{p}صوتي <رقم>` ◂ بالرد على مقطع صوتي/فيديو لتطبيق التأثير (عبر API خارجي)
-`{p}صوتي سجل` ◂ التسجيل في خادم الصوت لأول مرة
+`{p}صوتي` | عرض قائمة التأثيرات المتاحة (25 تأثيراً)
+`{p}صوتي <رقم>` | بالرد على مقطع صوتي/فيديو لتطبيق التأثير (عبر API خارجي)
+`{p}صوتي سجل` | التسجيل في خادم الصوت لأول مرة
 
 **التأثيرات:** سنجاب، عميق، روبوت، صدى، عكسي، همس، مكبر، هاتف، كهف، فضائي، هيليوم، شيطان، راديو، تحت الماء، وحش، 8-بت، فنطاز، بطيء، سريع، تأتأة، مكتوم، جوقة، سكران، تريمولو""",
 }
@@ -811,7 +811,7 @@ async def _(event):
     user, uid = await get_target_user(event)
     if not user:
         return await edit_delete(event, "- رد على شخص أو ضع معرفه", 8)
-    txt = f"""**◂ كشف المستخدم :**
+    txt = f"""**| كشف المستخدم :**
 **الاسم:** {get_display_name(user)}
 **الايدي:** `{user.id}`
 **المعرف:** @{user.username if user.username else 'لا يوجد'}
@@ -847,7 +847,7 @@ async def _(event):
         event.chat_id, filter=types.ChannelParticipantsAdmins
     ):
         admins.append(f"• {mention(u)} — `{u.id}`")
-    txt = "**◂ مشرفو المجموعة :**\n\n" + "\n".join(admins)
+    txt = "**| مشرفو المجموعة :**\n\n" + "\n".join(admins)
     await edit_or_reply(event, txt)
 
 
@@ -868,14 +868,14 @@ async def _(event):
             bots.append(f"• {mention(u)} — `{u.id}`")
     if not bots:
         return await edit_or_reply(event, "- لا يوجد بوتات في هذه المجموعة")
-    await edit_or_reply(event, "**◂ البوتات :**\n\n" + "\n".join(bots))
+    await edit_or_reply(event, "**| البوتات :**\n\n" + "\n".join(bots))
 
 
 @cmd(r"معلومات$", groups_only=True)
 async def _(event):
     chat = await event.get_chat()
     full = await event.client.get_participants(event.chat_id, limit=0)
-    txt = f"""**◂ معلومات المجموعة :**
+    txt = f"""**| معلومات المجموعة :**
 **الاسم:** {chat.title}
 **الايدي:** `{event.chat_id}`
 **عدد الأعضاء:** `{full.total}`
@@ -913,7 +913,7 @@ async def _(event):
     data = db_read("replies")
     if not data:
         return await edit_or_reply(event, "- لا يوجد ردود مضافة")
-    txt = "**◂ الردود المضافة :**\n\n" + "\n".join(f"• `{k}`" for k in data)
+    txt = "**| الردود المضافة :**\n\n" + "\n".join(f"• `{k}`" for k in data)
     await edit_or_reply(event, txt)
 
 
@@ -1023,7 +1023,7 @@ async def _(event):
     words = db_read("locked").get(f"{event.chat_id}", [])
     if not words:
         return await edit_or_reply(event, "- لا يوجد كلمات ممنوعة")
-    txt = "**◂ الكلمات الممنوعة :**\n\n" + "\n".join(f"• `{w}`" for w in words)
+    txt = "**| الكلمات الممنوعة :**\n\n" + "\n".join(f"• `{w}`" for w in words)
     await edit_or_reply(event, txt)
 
 
@@ -1044,7 +1044,7 @@ async def _locked_watcher(event):
 
 
 PM_WARN_TEXT = (
-    f"**◂ حماية الخاص — سورس حمزة**\n\n"
+    f"**| حماية الخاص — سورس حمزة**\n\n"
     "هذا حساب محمي، انتظر موافقة صاحب الحساب.\n"
     "تكرار الرسائل سيؤدي لحظرك."
 )
@@ -1089,7 +1089,7 @@ async def _(event):
     allowed = db_read("pm_allowed")
     if not allowed:
         return await edit_or_reply(event, "- لا يوجد مسموح لهم")
-    txt = "**◂ المسموح لهم بالخاص :**\n\n" + "\n".join(
+    txt = "**| المسموح لهم بالخاص :**\n\n" + "\n".join(
         f"• `{k}`" for k in allowed
     )
     await edit_or_reply(event, txt)
@@ -1258,7 +1258,7 @@ async def _(event):
 @cmd(r"حسابي$")
 async def _(event):
     me = await event.client.get_me()
-    txt = f"""**◂ معلومات حسابك :**
+    txt = f"""**| معلومات حسابك :**
 **الاسم:** {get_display_name(me)}
 **الايدي:** `{me.id}`
 **المعرف:** @{me.username if me.username else 'لا يوجد'}
@@ -1285,7 +1285,7 @@ async def _(event):
         tr = Translator()
         res = tr.translate(text, dest=lang)
         await edit_or_reply(
-            event, f"**الترجمة ({res.src} ◂ {lang}):**\n\n{res.text}"
+            event, f"**الترجمة ({res.src} | {lang}):**\n\n{res.text}"
         )
     except Exception as e:
         await edit_delete(event, f"- تعذر الترجمة (ثبّت googletrans): `{e}`", 10)
@@ -1462,7 +1462,7 @@ class TextFloodGuard:
             else 0
         )
         return {
-            "type": "🟣 بريميوم" if self.is_premium else "⚪ عادي",
+            "type": " بريميوم" if self.is_premium else " عادي",
             "tokens": f"{self.tokens:.1f}/{self.capacity}",
             "refill": f"{self.refill_rate}/s",
             "rate": f"{rate:.2f} msg/s",
@@ -1519,7 +1519,7 @@ async def _(event):
         _load_insults()
     samples = "\n".join(f"• {generate_insult()}" for _ in range(5))
     await edit_or_reply(
-        event, f"**◂ عينات من المولّد :**\n\n{samples}"
+        event, f"**| عينات من المولّد :**\n\n{samples}"
     )
 
 
@@ -1566,10 +1566,10 @@ async def _(event):
     db_set("settings", "spam_delay", spam_delay)
     spam_task = asyncio.ensure_future(_spam_loop(event.chat_id, reply_to))
     spam_typing_task = asyncio.ensure_future(_keep_typing(event.chat_id))
-    state = "🛡️" if flood_guard_enabled else "🚫"
-    msg = f"▶️ بدء الإرسال... ⏱ {spam_delay}ث {state}"
+    state = "🛡" if flood_guard_enabled else ""
+    msg = f" بدء الإرسال... ⏱ {spam_delay}ث {state}"
     if reply_to:
-        msg += "\n🎯 مستهدف: على الرسالة المُشار إليها"
+        msg += "\n مستهدف: على الرسالة المُشار إليها"
     await event.edit(msg)
 
 
@@ -1583,7 +1583,7 @@ async def _(event):
     if spam_typing_task:
         spam_typing_task.cancel()
         spam_typing_task = None
-    await event.edit("⏹️ تم إيقاف الإرسال")
+    await event.edit(" تم إيقاف الإرسال")
 
 
 @cmd(r"(?:وقت الارسال|سرعه)(?:\s|$)([\s\S]*)")
@@ -1604,7 +1604,7 @@ async def _(event):
 async def _(event):
     global follow_running
     follow_running = True
-    state = "🛡️" if flood_guard_enabled else "🚫"
+    state = "🛡" if flood_guard_enabled else ""
     await edit_or_reply(event, f"تم تفعيل التتبع {state} ✓")
 
 
@@ -1633,7 +1633,7 @@ async def _auto_follow(event):
 async def _(event):
     global flood_guard_enabled
     flood_guard_enabled = not flood_guard_enabled
-    state = "🛡️ مفعلة" if flood_guard_enabled else "🚫 معطلة"
+    state = "🛡 مفعلة" if flood_guard_enabled else " معطلة"
     await edit_or_reply(event, f"حماية الفلود: {state}")
 
 
@@ -1643,7 +1643,7 @@ async def _(event):
         return await edit_delete(event, "- الحماية غير مهيأة", 6)
     s = flood_guard.get_stats()
     txt = (
-        f"**🛡️ حماية الفلود**\n\n"
+        f"**🛡 حماية الفلود**\n\n"
         f"الحساب: {s['type']}\n"
         f"Tokens: {s['tokens']}\n"
         f"Refill: {s['refill']}\n"
@@ -1676,7 +1676,7 @@ async def _(event):
         return await edit_delete(event, "- التحويل يعمل بالفعل", 6)
     forward_running = True
     forward_task = asyncio.ensure_future(_forward_loop(event.chat_id))
-    await event.edit(f"▶️ تشغيل التحويل من المحفوظات... delay: {forward_delay}ث")
+    await event.edit(f" تشغيل التحويل من المحفوظات... delay: {forward_delay}ث")
 
 
 @cmd(r"ايقاف التحويل$")
@@ -1685,7 +1685,7 @@ async def _(event):
     if not forward_running:
         return await edit_delete(event, "- التحويل متوقف بالفعل", 6)
     forward_running = False
-    await event.edit("⏹️ تم إيقاف التحويل")
+    await event.edit(" تم إيقاف التحويل")
 
 
 @cmd(r"ديلاي(?:\s|$)([\s\S]*)")
@@ -1758,7 +1758,7 @@ async def _(event):
         )
         await asyncio.wait_for(proc.wait(), timeout=120)
         if proc.returncode != 0:
-            return await m.edit("❌ فشل التحويل — تأكد من أن الملف صالح")
+            return await m.edit(" فشل التحويل — تأكد من أن الملف صالح")
         import mimetypes
         await event.client.send_file(
             event.chat_id, tmp_out,
@@ -1773,9 +1773,9 @@ async def _(event):
         )
         await m.delete()
     except asyncio.TimeoutError:
-        await m.edit("❌ انتهت مهلة التحويل (الملف كبير جداً)")
+        await m.edit(" انتهت مهلة التحويل (الملف كبير جداً)")
     except Exception as e:
-        await m.edit(f"❌ خطأ: {e}")
+        await m.edit(f" خطأ: {e}")
     finally:
         for f in (tmp_in, tmp_out):
             if f and os.path.exists(f):
@@ -1789,7 +1789,7 @@ async def _(event):
 
 @cmd(r"نسبة الحب(?:\s|$)([\s\S]*)")
 async def _(event):
-    await edit_or_reply(event, f"نسبة الحب: {random.randint(0, 100)}% 💗")
+    await edit_or_reply(event, f"نسبة الحب: {random.randint(0, 100)}% ♥")
 
 
 @cmd(r"نسبة الغباء(?:\s|$)([\s\S]*)")
@@ -1801,13 +1801,13 @@ async def _(event):
 async def _(event):
     await event.delete()
     await event.client.send_message(
-        event.chat_id, file=types.InputMediaDice(emoticon="🎲")
+        event.chat_id, file=types.InputMediaDice(emoticon="\U0001F3B2")
     )
 
 
 @cmd(r"قلوب$")
 async def _(event):
-    hearts = ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💗"]
+    hearts = ["\u2764", "\U0001F9E1", "\U0001F49B", "\U0001F49A", "\U0001F499", "\U0001F49C", "\U0001F5A4", "\U0001F90D", "\U0001F90E", "\U0001F497"]
     for h in hearts:
         try:
             await event.edit(h * 5)
@@ -1872,7 +1872,7 @@ async def _(event):
     sudos = db_read("sudo_users")
     if not sudos:
         return await edit_or_reply(event, "- لا يوجد متحكمين")
-    txt = "**◂ المتحكمين :**\n\n" + "\n".join(
+    txt = "**| المتحكمين :**\n\n" + "\n".join(
         f"• {v} — `{k}`" for k, v in sudos.items()
     )
     await edit_or_reply(event, txt)
@@ -1966,7 +1966,7 @@ async def _ai_run_raw_tl(p):
             params = {k: v for k, v in p["request"].items() if k != "_"}
 
         if not method:
-            return "❌ تعذّر فهم شكل الاستدعاء raw_tl"
+            return " تعذّر فهم شكل الاستدعاء raw_tl"
 
         ns = None
         if ns_name:
@@ -1975,16 +1975,16 @@ async def _ai_run_raw_tl(p):
             guess = method.split("Get")[0].split("Edit")[0].split("Send")[0].split("Create")[0].split("Delete")[0].split("Resolve")[0].rstrip("s").lower() or "channels"
             ns = getattr(functions, guess, None) or getattr(types, guess, None)
         if ns is None:
-            return f"❌ لا توجد وحدة للدالة {method}"
+            return f" لا توجد وحدة للدالة {method}"
         fn = getattr(ns, method, None)
         if fn is None:
-            return f"❌ لا توجد دالة {method} في {ns_name or guess}"
+            return f" لا توجد دالة {method} في {ns_name or guess}"
 
         params = await _ai_coerce_params(fn, params)
         res = await client(fn(**params))
-        return f"⚡ نتيجة {method}:\n{str(res)[:3000]}"
+        return f" نتيجة {method}:\n{str(res)[:3000]}"
     except Exception as e:
-        return f"❌ خطأ تنفيذ raw_tl: {e}"
+        return f" خطأ تنفيذ raw_tl: {e}"
 
 
 async def _ai_coerce_params(fn, params):
@@ -2040,88 +2040,88 @@ async def _ai_run_tool(call):
         if name == "send_message":
             ent = await _ai_resolve_ent(p["target"])
             if ent is None:
-                return "❌ تعذّر إيجاد الهدف"
+                return " تعذّر إيجاد الهدف"
             await client.send_message(ent, p["text"])
-            return f"✅ تم الإرسال إلى {p['target']}"
+            return f" تم الإرسال إلى {p['target']}"
         if name == "block_user":
             ent = await _ai_resolve_ent(p["target"])
             if ent is None:
-                return "❌ تعذّر إيجاد المستخدم"
+                return " تعذّر إيجاد المستخدم"
             await client(functions.contacts.BlockRequest(ent))
-            return f"✅ تم حظر {p['target']}"
+            return f" تم حظر {p['target']}"
         if name == "unblock_user":
             ent = await _ai_resolve_ent(p["target"])
             if ent is None:
-                return "❌ تعذّر إيجاد المستخدم"
+                return " تعذّر إيجاد المستخدم"
             await client(functions.contacts.UnblockRequest(ent))
-            return f"✅ تم إلغاء حظر {p['target']}"
+            return f" تم إلغاء حظر {p['target']}"
         if name == "kick_user":
             ent = await _ai_resolve_ent(p["user"])
             chat = await _ai_resolve_ent(p["chat"])
             if ent is None or chat is None:
-                return "❌ تعذّر إيجاد المستخدم أو المجموعة"
+                return " تعذّر إيجاد المستخدم أو المجموعة"
             await client.kick_participant(chat, ent)
-            return f"✅ تم طرد {p['user']} من {p['chat']}"
+            return f" تم طرد {p['user']} من {p['chat']}"
         if name == "ban_chat_member":
             ent = await _ai_resolve_ent(p["user"])
             chat = await _ai_resolve_ent(p["chat"])
             if ent is None or chat is None:
-                return "❌ تعذّر إيجاد"
+                return " تعذّر إيجاد"
             await client(functions.channels.EditBannedRequest(chat, ent,
                   types.ChatBannedRights(until_date=None, view_messages=True)))
-            return f"✅ تم حظر {p['user']} من {p['chat']}"
+            return f" تم حظر {p['user']} من {p['chat']}"
         if name == "pin_message":
             await client.pin_message(p["chat_id"], p["message_id"])
-            return f"✅ تم تثبيت الرسالة {p['message_id']}"
+            return f" تم تثبيت الرسالة {p['message_id']}"
         if name == "read_messages":
             ent = await _ai_resolve_ent(p["target"])
             if ent is None:
-                return "❌ تعذّر إيجاد المحادثة"
+                return " تعذّر إيجاد المحادثة"
             limit = int(p.get("limit", 5))
             out = []
             async for msg in client.iter_messages(ent, limit=limit):
                 who = "أنت" if msg.out else (get_display_name(await msg.get_sender()) if msg.sender_id else "؟")
                 out.append(f"{who}: {msg.raw_text or '[وسائط]'}")
-            return "📨:\n" + "\n".join(reversed(out)) if out else "لا رسائل"
+            return ":\n" + "\n".join(reversed(out)) if out else "لا رسائل"
         if name == "delete_messages":
             ent = await _ai_resolve_ent(p["target"])
             if ent is None:
-                return "❌ تعذّر إيجاد"
+                return " تعذّر إيجاد"
             if p.get("message_ids"):
                 await client.delete_messages(ent, p["message_ids"], revoke=p.get("revoke", True))
-                return f"✅ تم حذف الرسائل من {p['target']}"
+                return f" تم حذف الرسائل من {p['target']}"
             await client.delete_messages(ent, None)
-            return f"✅ تم مسح المحادثة مع {p['target']}"
+            return f" تم مسح المحادثة مع {p['target']}"
         if name == "get_me":
             me = await client.get_me()
-            return f"👤 {get_display_name(me)} | @{me.username or 'لايوجد'} | id {me.id} | هاتف {getattr(me,'phone','غير متاح')} | بريميوم {'نعم' if getattr(me,'premium',False) else 'لا'}"
+            return f" {get_display_name(me)} | @{me.username or 'لايوجد'} | id {me.id} | هاتف {getattr(me,'phone','غير متاح')} | بريميوم {'نعم' if getattr(me,'premium',False) else 'لا'}"
         if name == "get_user":
             ent = await _ai_resolve_ent(p["target"])
             if ent is None:
-                return "❌ تعذّر إيجاد"
-            return f"👤 {get_display_name(ent)} | @{getattr(ent,'username',None) or 'لايوجد'} | id {ent.id} | بريميوم {'نعم' if getattr(ent,'premium',False) else 'لا'} | موثّق {'نعم' if getattr(ent,'verified',False) else 'لا'} | بايو: {getattr(ent,'about','') or 'لايوجد'}"
+                return " تعذّر إيجاد"
+            return f" {get_display_name(ent)} | @{getattr(ent,'username',None) or 'لايوجد'} | id {ent.id} | بريميوم {'نعم' if getattr(ent,'premium',False) else 'لا'} | موثّق {'نعم' if getattr(ent,'verified',False) else 'لا'} | بايو: {getattr(ent,'about','') or 'لايوجد'}"
         if name == "list_dialogs":
             out = []
             async for d in client.iter_dialogs(limit=int(p.get("limit", 25))):
                 out.append(f"- {d.name} ({d.id})")
-            return "💬:\n" + "\n".join(out)
+            return ":\n" + "\n".join(out)
         if name == "resolve_username":
             res = await client(functions.contacts.ResolveUsernameRequest(str(p["username"]).replace("@", "")))
             u = res.users[0] if getattr(res, "users", None) else None
             if u:
-                return f"🔎 {get_display_name(u)} | @{u.username or 'لايوجد'} | id {u.id}"
-            return "❌ لم يوجد"
+                return f" {get_display_name(u)} | @{u.username or 'لايوجد'} | id {u.id}"
+            return " لم يوجد"
         if name == "create_group":
             chat = await client(functions.channels.CreateChannelRequest(
                 title=p["title"], about=p.get("about", ""), broadcast=bool(p.get("broadcast", False))))
-            return f"✅ تم الإنشاء: {p['title']} (id {chat.chats[0].id})"
+            return f" تم الإنشاء: {p['title']} (id {chat.chats[0].id})"
         if name == "invite_to_chat":
             ent = await _ai_resolve_ent(p["user"])
             chat = await _ai_resolve_ent(p["chat"])
             if ent is None or chat is None:
-                return "❌ تعذّر إيجاد"
+                return " تعذّر إيجاد"
             await client(functions.channels.InviteToChannelRequest(chat, [ent]))
-            return f"✅ تمت دعوة {p['user']} إلى {p['chat']}"
+            return f" تمت دعوة {p['user']} إلى {p['chat']}"
         if name == "update_profile":
             kw = {}
             if p.get("first_name"):
@@ -2131,23 +2131,23 @@ async def _ai_run_tool(call):
             if "about" in p:
                 kw["about"] = p["about"]
             await client(functions.account.UpdateProfileRequest(**kw))
-            return "✅ تم تحديث البروفايل"
+            return " تم تحديث البروفايل"
         if name == "leave_chat":
             chat = await _ai_resolve_ent(p["chat"])
             if chat is None:
-                return "❌ تعذّر إيجاد"
+                return " تعذّر إيجاد"
             await client(functions.channels.LeaveChannelRequest(chat))
-            return f"✅ تمت المغادرة: {p['chat']}"
+            return f" تمت المغادرة: {p['chat']}"
         if name == "forward_message":
             fch = await _ai_resolve_ent(p["from_chat"])
             tch = await _ai_resolve_ent(p["to_chat"])
             await client.forward_messages(tch, p["message_id"], fch)
-            return "✅ تم التوجيه"
+            return " تم التوجيه"
         if name == "raw_tl":
             return await _ai_run_raw_tl(p)
-        return f"❌ أداة غير معروفة: {name}"
+        return f" أداة غير معروفة: {name}"
     except Exception as e:
-        return f"❌ خطأ تنفيذ {name}: {e}"
+        return f" خطأ تنفيذ {name}: {e}"
 
 
 def _ai_parse_tool_calls(text):
@@ -2438,13 +2438,13 @@ async def _ai_execute_action(instruction, event):
             for t in targets:
                 ent = await _resolve(t)
                 if isinstance(ent, str) and ent.startswith("__ERR__"):
-                    res.append(f"❌ {t}: {ent[7:]}")
+                    res.append(f" {t}: {ent[7:]}")
                     continue
                 try:
                     await client.send_message(ent, text)
-                    res.append(f"✅ تم الإرسال إلى {t}")
+                    res.append(f" تم الإرسال إلى {t}")
                 except Exception as e:
-                    res.append(f"❌ {t}: {e}")
+                    res.append(f" {t}: {e}")
             return "\n".join(res)
 
         for kw in (r"حظر", r"بان", r"امنع"):
@@ -2452,46 +2452,46 @@ async def _ai_execute_action(instruction, event):
             if m:
                 ent = await _resolve(m.group(1).strip())
                 if isinstance(ent, str) and ent.startswith("__ERR__"):
-                    return f"❌ تعذّر الحظر: {ent[7:]}"
+                    return f" تعذّر الحظر: {ent[7:]}"
                 try:
                     await client(functions.contacts.BlockRequest(ent))
                     name = get_display_name(ent) if hasattr(ent, "id") else m.group(1)
-                    return f"✅ تم حظر {name} بنجاح من حسابك."
+                    return f" تم حظر {name} بنجاح من حسابك."
                 except Exception as e:
-                    return f"❌ فشل الحظر: {e}"
+                    return f" فشل الحظر: {e}"
 
         m = _re.search(r"الغاء\s+حظر\s+(?:الرقم\s+|المستخدم\s+|اليوزر\s+)?(.+)", ins)
         if m:
             ent = await _resolve(m.group(1).strip())
             if isinstance(ent, str) and ent.startswith("__ERR__"):
-                return f"❌ تعذّر: {ent[7:]}"
+                return f" تعذّر: {ent[7:]}"
             try:
                 await client(functions.contacts.UnblockRequest(ent))
-                return f"✅ تم إلغاء حظر {get_display_name(ent) if hasattr(ent,'id') else m.group(1)}."
+                return f" تم إلغاء حظر {get_display_name(ent) if hasattr(ent,'id') else m.group(1)}."
             except Exception as e:
-                return f"❌ فشل: {e}"
+                return f" فشل: {e}"
 
         m = _re.search(r"اطرد\s+(?:المستخدم\s+)?(.+?)\s+(?:من\s+|في\s+)?(.+)", ins)
         if m and (_re.search(r"من\s+|في\s+", ins)):
             ent = await _resolve(m.group(1).strip())
             chat = await _resolve(m.group(2).strip())
             if isinstance(ent, str) and ent.startswith("__ERR__"):
-                return f"❌ العضو: {ent[7:]}"
+                return f" العضو: {ent[7:]}"
             if isinstance(chat, str) and chat.startswith("__ERR__"):
-                return f"❌ المجموعة: {chat[7:]}"
+                return f" المجموعة: {chat[7:]}"
             try:
                 await client.kick_participant(chat, ent)
-                return f"✅ تم طرد {get_display_name(ent) if hasattr(ent,'id') else ''} من {get_display_name(chat) if hasattr(chat,'id') else ''}."
+                return f" تم طرد {get_display_name(ent) if hasattr(ent,'id') else ''} من {get_display_name(chat) if hasattr(chat,'id') else ''}."
             except Exception as e:
-                return f"❌ فشل الطرد: {e}"
+                return f" فشل الطرد: {e}"
 
         if _re.search(r"ثبت|پین", ins):
             if event and event.reply_to_msg_id:
                 try:
                     await client.pin_message(event.chat_id, event.reply_to_msg_id)
-                    return "✅ تم تثبيت الرسالة."
+                    return " تم تثبيت الرسالة."
                 except Exception as e:
-                    return f"❌ فشل التثبيت: {e}"
+                    return f" فشل التثبيت: {e}"
 
         m = _re.search(r"اقر[اأ]?\s*(?:آخر\s+)?(\d+)?\s*رسال[ةه]?\s+(?:من\s+|في\s+)?(.+)", ins)
         if m:
@@ -2499,12 +2499,12 @@ async def _ai_execute_action(instruction, event):
             target = m.group(2).strip() if m.group(2) else (event.chat_id if event else None)
             ent = await _resolve(target) if isinstance(target, str) else target
             if isinstance(ent, str) and ent.startswith("__ERR__"):
-                return f"❌ تعذّر القراءة: {ent[7:]}"
+                return f" تعذّر القراءة: {ent[7:]}"
             out = []
             async for msg in client.iter_messages(ent, limit=limit):
                 who = "أنت" if msg.out else (get_display_name(await msg.get_sender()) if msg.sender_id else "؟")
                 out.append(f"{who}: {msg.raw_text or '[وسائط]'}")
-            return "📨 آخر الرسائل:\n" + "\n".join(reversed(out)) if out else "لا توجد رسائل"
+            return " آخر الرسائل:\n" + "\n".join(reversed(out)) if out else "لا توجد رسائل"
 
         m = _re.search(r"امسح\s+(?:رسائل\s+)?(.+?)(?:\s+مع\s+|\s+من\s+)?(.+)?$", ins)
         if m and _re.search(r"مسح|امسح", ins):
@@ -2512,17 +2512,17 @@ async def _ai_execute_action(instruction, event):
             if target:
                 ent = await _resolve(target)
                 if isinstance(ent, str) and ent.startswith("__ERR__"):
-                    return f"❌ تعذّر: {ent[7:]}"
+                    return f" تعذّر: {ent[7:]}"
                 try:
                     await client.delete_messages(ent, None)
-                    return f"✅ تم مسح المحادثة مع {get_display_name(ent) if hasattr(ent,'id') else target}."
+                    return f" تم مسح المحادثة مع {get_display_name(ent) if hasattr(ent,'id') else target}."
                 except Exception as e:
-                    return f"❌ فشل المسح: {e}"
+                    return f" فشل المسح: {e}"
 
         if _re.search(r"من\s+انت|معلوماتي|حسابي|من\s+أنا", ins):
             me = await client.get_me()
             return (
-                f"👤 حسابك:\nالاسم: {get_display_name(me)}\nالمعرّف: @{me.username or 'لايوجد'}\n"
+                f" حسابك:\nالاسم: {get_display_name(me)}\nالمعرّف: @{me.username or 'لايوجد'}\n"
                 f"الآيدي: {me.id}\nالهاتف: {getattr(me, 'phone', 'غير متاح')}\n"
                 f"بريميوم: {'نعم' if getattr(me, 'premium', False) else 'لا'}"
             )
@@ -2531,7 +2531,7 @@ async def _ai_execute_action(instruction, event):
             dialogs = []
             async for d in client.iter_dialogs(limit=25):
                 dialogs.append(f"- {d.name} ({d.id})")
-            return "💬 المحادثات:\n" + "\n".join(dialogs)
+            return " المحادثات:\n" + "\n".join(dialogs)
 
         m = _re.search(r"انش[ئي]?\s+(?:مجموعة\s+|قروب\s+)?(.+)", ins)
         if m:
@@ -2539,47 +2539,47 @@ async def _ai_execute_action(instruction, event):
                 chat = await client(functions.channels.CreateChannelRequest(
                     title=m.group(1).strip(), about="", broadcast=False))
                 cid = chat.chats[0].id
-                return f"✅ تم إنشاء مجموعة: {m.group(1).strip()} (id {cid})"
+                return f" تم إنشاء مجموعة: {m.group(1).strip()} (id {cid})"
             except Exception as e:
-                return f"❌ فشل الإنشاء: {e}"
+                return f" فشل الإنشاء: {e}"
 
         m = _re.search(r"اضف\s+(?:المستخدم\s+)?(.+?)\s+(?:إلى\s+|لـ|ل)\s+(.+)", ins)
         if m:
             ent = await _resolve(m.group(1).strip())
             chat = await _resolve(m.group(2).strip())
             if isinstance(ent, str) and ent.startswith("__ERR__"):
-                return f"❌ العضو: {ent[7:]}"
+                return f" العضو: {ent[7:]}"
             if isinstance(chat, str) and chat.startswith("__ERR__"):
-                return f"❌ المجموعة: {chat[7:]}"
+                return f" المجموعة: {chat[7:]}"
             try:
                 await client(functions.channels.InviteToChannelRequest(chat, [ent]))
-                return f"✅ تمت دعوة {get_display_name(ent) if hasattr(ent,'id') else ''} إلى {get_display_name(chat) if hasattr(chat,'id') else ''}."
+                return f" تمت دعوة {get_display_name(ent) if hasattr(ent,'id') else ''} إلى {get_display_name(chat) if hasattr(chat,'id') else ''}."
             except Exception as e:
-                return f"❌ فشل الدعوة: {e}"
+                return f" فشل الدعوة: {e}"
 
         m = _re.search(r"ابحث\s+(?:عن\s+)?(.+)", ins)
         if m:
             ent = await _resolve(m.group(1).strip())
             if isinstance(ent, str) and ent.startswith("__ERR__"):
-                return f"❌ لم أجد: {ent[7:]}"
+                return f" لم أجد: {ent[7:]}"
             if hasattr(ent, "id"):
-                return f"🔎 وُجد: {get_display_name(ent)} | @{getattr(ent,'username',None) or 'لايوجد'} | id {ent.id}"
-            return f"🔎 وُجد كيان: {ent}"
+                return f" وُجد: {get_display_name(ent)} | @{getattr(ent,'username',None) or 'لايوجد'} | id {ent.id}"
+            return f" وُجد كيان: {ent}"
 
         m = _re.search(r"معلومات\s+(?:المستخدم\s+|الرقم\s+)?(.+)", ins)
         if m:
             ent = await _resolve(m.group(1).strip())
             if isinstance(ent, str) and ent.startswith("__ERR__"):
-                return f"❌ تعذّر: {ent[7:]}"
+                return f" تعذّر: {ent[7:]}"
             if hasattr(ent, "id"):
-                return (f"👤 {get_display_name(ent)}\nالمعرّف: @{getattr(ent,'username',None) or 'لايوجد'}\n"
+                return (f" {get_display_name(ent)}\nالمعرّف: @{getattr(ent,'username',None) or 'لايوجد'}\n"
                         f"الآيدي: {ent.id}\nبريميوم: {'نعم' if getattr(ent,'premium',False) else 'لا'}\n"
                         f"موثّق: {'نعم' if getattr(ent,'verified',False) else 'لا'}\nالبايو: {getattr(ent,'about','لايوجد') or 'لايوجد'}")
-            return f"ℹ️ {ent}"
+            return f"ℹ {ent}"
 
         return None
     except Exception as e:
-        return f"❌ خطأ بالتنفيذ: {e}"
+        return f" خطأ بالتنفيذ: {e}"
 
 
 async def ai_ask(question, event=None, owner_chat=False, with_tools=False):
@@ -2789,7 +2789,7 @@ async def _(event):
         cur = _ai_load()["prompt"]
         await edit_or_reply(
             event,
-            f"**◂ تعليمات الذكاء الحالية:**\n\n`{cur}`\n\n"
+            f"**| تعليمات الذكاء الحالية:**\n\n`{cur}`\n\n"
             f"للتعديل: `{PREFIX}تعليمات الذكاء <النص>`\n"
             f"للإرجاع: `{PREFIX}تعليمات الذكاء افتراضي`",
         )
@@ -2813,7 +2813,7 @@ async def _(event):
         arg = reply.text
     if not arg:
         return await edit_delete(event, f"- اكتب: {PREFIX}ذكاء <سؤالك>", 8)
-    m = await event.edit("🤖 جاري التفكير...")
+    m = await event.edit(" جاري التفكير...")
     try:
         if db_get("settings", "ai_full", False):
             answer = await ai_ask(arg, event, owner_chat=True, with_tools=True)
@@ -2827,13 +2827,13 @@ async def _(event):
             ai_mem_add("chat_owner", "assistant", answer)
             out = answer
             if results:
-                out += "\n\n⚡ **نتائج التنفيذ:**\n" + "\n".join(results)
+                out += "\n\n **نتائج التنفيذ:**\n" + "\n".join(results)
                 follow = await ai_ask(
                     "[نتيجة تنفيذ أدواتك]:\n" + "\n".join(results) +
                     "\nاشرح للمالك ما تم، وإن احتجت تصحيحاً اقترح أداة أخرى.",
                     event, owner_chat=True, with_tools=True)
                 if follow:
-                    out += "\n\n💬 " + follow
+                    out += "\n\n " + follow
                     ai_mem_add("chat_owner", "assistant", follow)
             out += "\n\n__محادثة مستمرة — اكتب .ذكاء للمتابعة/التصحيح__"
             await edit_or_reply(m, out)
@@ -2890,7 +2890,7 @@ def _bc_tos(entity, name=None):
     for r in (getattr(entity, "restriction_reason", []) or []):
         if getattr(r, "reason", "") == "terms":
             return (
-                "⚠️ هذه المجموعة محظورة لانتهاكها شروط خدمة تيليجرام (TOOLTIP).\n"
+                "Warning هذه المجموعة محظورة لانتهاكها شروط خدمة تيليجرام (TOOLTIP).\n"
                 f"  → {name}"
             )
     return None
@@ -2899,37 +2899,37 @@ def _bc_tos(entity, name=None):
 def _bc_translate(res):
     """يحوّل نتيجة الفحص لعربية واضحة"""
     if res is None:
-        return "✅ سليم | لا يوجد حظر"
+        return " سليم | لا يوجد حظر"
     if res.startswith("OK|"):
         _, t, name = (res.split("|", 2) + ["", ""])[:3]
-        return f"✅ سليم | النوع: {t} | الاسم: {name}"
+        return f" سليم | النوع: {t} | الاسم: {name}"
     if res == "BANNED_OR_NOT_FOUND":
-        return "🚫 محظور أو غير موجود"
+        return " محظور أو غير موجود"
     if res == "BANNED_OR_PRIVATE":
-        return "🔒 محظور أو خاص"
+        return " محظور أو خاص"
     if res == "BANNED":
-        return "🚫 محظور (BANNED)"
+        return " محظور (BANNED)"
     if res == "BANNED_YOU":
-        return "🚫 محظور أنت فيه"
+        return " محظور أنت فيه"
     if res == "BANNED_OR_EXPIRED":
         return "⏰ الرابط منتهٍ أو محظور"
     if res == "BANNED_OR_INVALID":
-        return "❌ الرابط غير صالح أو محظور"
+        return " الرابط غير صالح أو محظور"
     if res == "INVALID_USER_ID":
-        return "❌ معرّف مستخدم غير صالح"
+        return " معرّف مستخدم غير صالح"
     if res == "NOT_FOUND":
         return "🔍 غير موجود"
     if res == "FULL":
-        return "📊 المجموعة ممتلئة"
+        return " المجموعة ممتلئة"
     if res == "EXPIRED":
         return "⏰ الرابط منتهٍ الصلاحية"
     if res.startswith("SCAM_FAKE|"):
         parts = res.split("|", 1)
-        return f"🚨 رابط وهمي/نصب (SCAM): {parts[1] if len(parts) > 1 else '؟'}"
+        return f" رابط وهمي/نصب (SCAM): {parts[1] if len(parts) > 1 else '؟'}"
     if res.startswith("TOOLTIP:"):
-        return "🚫 " + res.replace("TOOLTIP:", "").strip().replace("None", "؟")
+        return " " + res.replace("TOOLTIP:", "").strip().replace("None", "؟")
     if res.startswith("ERROR"):
-        return "⚠️ " + res
+        return "Warning " + res
     if res.startswith("FLOOD_WAIT"):
         return "⏳ " + res
     return res.replace("None", "؟")
@@ -3002,7 +3002,7 @@ async def _bc_check_invite(hashv):
 async def _bc_check(target):
     parsed = _bc_extract(target)
     if not parsed:
-        return "❌ مدخل غير صالح"
+        return " مدخل غير صالح"
     kind, value = parsed
     try:
         if kind == "invite":
@@ -3021,7 +3021,7 @@ async def _(event):
         up = readable_time(time.time() - START_TIME)
         me = await event.client.get_me()
         txt = f"""**[ سورس حمزة ]**
-✦┅━╍━╍╍━━╍━━╍━┅✦
+=========================
 
 **الحالة:** يعمل ✓
 **المالك:** {OWNER_NAME}
@@ -3047,7 +3047,7 @@ async def _(event):
     m = await event.edit("🔍 جاري فحص الدعوة...")
     parsed = _bc_extract(arg)
     if not parsed or parsed[0] != "invite":
-        return await edit_or_reply(m, "❌ هذا ليس رابط دعوة صالحاً")
+        return await edit_or_reply(m, " هذا ليس رابط دعوة صالحاً")
     res = await _bc_check_invite(parsed[1])
     await edit_or_reply(m, _bc_translate(res))
 
@@ -3145,7 +3145,7 @@ async def _target_still_alive(target):
     try:
         ent = await _ai_resolve_ent(target)
         if ent is None:
-            return False, "❌ تعذّر إيجاد الهدف (ممكن محظور أو محذوف)"
+            return False, " تعذّر إيجاد الهدف (ممكن محظور أو محذوف)"
         try:
             await client.get_permissions(ent) if getattr(ent, "megagroup", False) or getattr(ent, "broadcast", False) else None
         except Exception:
@@ -3154,8 +3154,8 @@ async def _target_still_alive(target):
     except Exception as e:
         err = str(e)
         if any(k in err for k in ("banned", "deactivated", "not exist", "notExist", "You can't", "CHANNEL_PRIVATE", "USER_BANNED_IN_CHANNEL", "timeout")):
-            return False, f"⛔ الهدف محظور/غير متاح الآن: {err}"
-        return False, f"⛔ خطأ في فحص الهدف: {err}"
+            return False, f"X الهدف محظور/غير متاح الآن: {err}"
+        return False, f"X خطأ في فحص الهدف: {err}"
 
 
 @cmd(r"شد_هدف(?:\s|$)([\s\S]*)")
@@ -3164,7 +3164,7 @@ async def _(event):
     cfg = _report_settings()
     cfg["target"] = arg
     db_write("report_cfg", cfg)
-    await edit_or_reply(event, f"✅ تم ضبط الهدف: {arg or 'لايوجد'}")
+    await edit_or_reply(event, f" تم ضبط الهدف: {arg or 'لايوجد'}")
 
 
 @cmd(r"شد_نوع(?:\s|$)([\s\S]*)")
@@ -3173,11 +3173,11 @@ async def _(event):
     if not arg:
         return await edit_delete(event, f"- اكتب: {PREFIX}شد_نوع <نوع>", 8)
     if arg.lower() not in REPORT_REASONS:
-        return await edit_or_reply(event, "❌ نوع غير معروف. الأنواع: " + ", ".join(REPORT_REASONS.keys()))
+        return await edit_or_reply(event, " نوع غير معروف. الأنواع: " + ", ".join(REPORT_REASONS.keys()))
     cfg = _report_settings()
     cfg["reason"] = arg.lower()
     db_write("report_cfg", cfg)
-    await edit_or_reply(event, f"✅ تم ضبط نوع البلاغ: {arg}")
+    await edit_or_reply(event, f" تم ضبط نوع البلاغ: {arg}")
 
 
 @cmd(r"شد_رساله(?:\s|$)([\s\S]*)")
@@ -3188,7 +3188,7 @@ async def _(event):
     cfg = _report_settings()
     cfg["message"] = arg
     db_write("report_cfg", cfg)
-    await edit_or_reply(event, f"✅ تم ضبط رسالة البلاغ:\n{arg}")
+    await edit_or_reply(event, f" تم ضبط رسالة البلاغ:\n{arg}")
 
 
 @cmd(r"شد_سرعه(?:\s|$)([\s\S]*)")
@@ -3199,7 +3199,7 @@ async def _(event):
     cfg = _report_settings()
     cfg["speed"] = max(1, min(int(arg), 60))
     db_write("report_cfg", cfg)
-    await edit_or_reply(event, f"✅ سرعة البلاغ (تأخير): {cfg['speed']} ثانية")
+    await edit_or_reply(event, f" سرعة البلاغ (تأخير): {cfg['speed']} ثانية")
 
 
 @cmd(r"شد_ايقاف$")
@@ -3207,7 +3207,7 @@ async def _(event):
     cfg = _report_settings()
     cfg["running"] = False
     db_write("report_cfg", cfg)
-    await edit_or_reply(event, "⏹️ تم طلب إيقاف البلاغ المستمر")
+    await edit_or_reply(event, " تم طلب إيقاف البلاغ المستمر")
 
 
 @cmd(r"شد_اعداد$")
@@ -3215,7 +3215,7 @@ async def _(event):
     cfg = _report_settings()
     await edit_or_reply(
         event,
-        f"**◂ إعدادات الشد الداخلي:**\n"
+        f"**| إعدادات الشد الداخلي:**\n"
         f"الهدف: {cfg['target'] or 'لايوجد'}\n"
         f"النوع: {cfg['reason']}\n"
         f"الرسالة: {cfg['message']}\n"
@@ -3226,8 +3226,8 @@ async def _(event):
         f"`{PREFIX}شد_نوع` <نوع>\n"
         f"`{PREFIX}شد_رساله` <نص>\n"
         f"`{PREFIX}شد_سرعه` <ثواني>\n"
-        f"`{PREFIX}شد` ◂ يبدأ البلاغ المستمر\n"
-        f"`{PREFIX}شد_ايقاف` ◂ يوقفه",
+        f"`{PREFIX}شد` | يبدأ البلاغ المستمر\n"
+        f"`{PREFIX}شد_ايقاف` | يوقفه",
     )
 
 
@@ -3242,7 +3242,7 @@ async def _(event):
     cfg["running"] = True
     db_write("report_cfg", cfg)
     m = await event.edit(
-        f"🚨 بدء البلاغ المستمر على:\n{target}\nالنوع: {cfg['reason']}\nالسرعة: {cfg['speed']}ث\n"
+        f" بدء البلاغ المستمر على:\n{target}\nالنوع: {cfg['reason']}\nالسرعة: {cfg['speed']}ث\n"
         f"(سيُوقف تلقائياً إذا حُظر الهدف — أو بـ {PREFIX}شد_ايقاف)"
     )
     sent = 0
@@ -3250,11 +3250,11 @@ async def _(event):
     while True:
         cfg = _report_settings()
         if not cfg.get("running", False):
-            await edit_or_reply(m, f"⏹️ تم الإيقاف بطلبك.\n📊 بلاغات مُرسلة: {sent}")
+            await edit_or_reply(m, f" تم الإيقاف بطلبك.\n بلاغات مُرسلة: {sent}")
             return
         alive, res = await _target_still_alive(target)
         if not alive:
-            await edit_or_reply(m, f"⛔ توقّف البلاغ تلقائياً:\n{res}\n📊 بلاغات مُرسلة: {sent}")
+            await edit_or_reply(m, f"X توقّف البلاغ تلقائياً:\n{res}\n بلاغات مُرسلة: {sent}")
             cfg = _report_settings()
             cfg["running"] = False
             db_write("report_cfg", cfg)
@@ -3265,17 +3265,17 @@ async def _(event):
             sent += 1
             err_count = 0
             try:
-                await m.edit(f"🚨 بلاغ مستمر...\n📊 مُرسل: {sent}\nالنوع: {cfg['reason']}\nالسرعة: {cfg['speed']}ث")
+                await m.edit(f" بلاغ مستمر...\n مُرسل: {sent}\nالنوع: {cfg['reason']}\nالسرعة: {cfg['speed']}ث")
             except Exception:
                 pass
         else:
             err_count += 1
-            await edit_or_reply(m, f"⚠️ خطأ في البلاغ ({err_count}): {r}\n📊 مُرسل: {sent}")
+            await edit_or_reply(m, f"Warning خطأ في البلاغ ({err_count}): {r}\n مُرسل: {sent}")
             if err_count >= 5:
                 cfg = _report_settings()
                 cfg["running"] = False
                 db_write("report_cfg", cfg)
-                return await edit_or_reply(m, f"⛔ توقّف بعد أخطاء متتالية.\n📊 بلاغات مُرسلة: {sent}")
+                return await edit_or_reply(m, f"X توقّف بعد أخطاء متتالية.\n بلاغات مُرسلة: {sent}")
         await asyncio.sleep(cfg["speed"])
 
 
@@ -3408,13 +3408,13 @@ async def _(event):
     global _time_task
     if _time_task is None or _time_task.done():
         _time_task = asyncio.ensure_future(_time_loop())
-    await edit_or_reply(event, "✅ تم تفعيل الاسم الوقتي — سيظهر الوقت بجانب اسمك كل دقيقة")
+    await edit_or_reply(event, " تم تفعيل الاسم الوقتي — سيظهر الوقت بجانب اسمك كل دقيقة")
 
 
 @cmd(r"وقتي ايقاف$")
 async def _(event):
     db_set("settings", "time_active", False)
-    await edit_or_reply(event, "⏹️ تم إيقاف الاسم الوقتي")
+    await edit_or_reply(event, " تم إيقاف الاسم الوقتي")
 
 
 @cmd(r"وقتي توقيت(?:\s|$)([\s\S]*)")
@@ -3427,7 +3427,7 @@ async def _(event):
         sample = "\n".join(f"• `{n}` ⟶ `{k}`" for n, k in list(TIME_ZONES.items())[:12])
         return await edit_or_reply(
             event,
-            f"**◂ اختيار التوقيت (المنطقة الزمنية):**\nالحالي: {label} ({cur})\n\n"
+            f"**| اختيار التوقيت (المنطقة الزمنية):**\nالحالي: {label} ({cur})\n\n"
             f"**أمثلة البلدان:**\n{sample}\n… وغيرها الكثير (أو اكتب مفتاح zoneinfo مباشرة مثل `Europe/London`)\n\n"
             f"للتغيير: `{PREFIX}وقتي توقيت <اسم البلد/المدينة>`\nمثال: `{PREFIX}وقتي توقيت بغداد`",
         )
@@ -3435,14 +3435,14 @@ async def _(event):
     if not zk:
         return await edit_or_reply(
             event,
-            "❌ لم أتعرّف على هذه المنطقة.\nاكتب `.وقتي توقيت` لعرض قائمة البلدان المتاحة، "
+            " لم أتعرّف على هذه المنطقة.\nاكتب `.وقتي توقيت` لعرض قائمة البلدان المتاحة، "
             "أو استخدم مفتاح zoneinfo صحيح مثل `Asia/Baghdad`.",
         )
     db_set("settings", "time_zone", zk)
     preview = _format_time_decorated()
     names = [n for n, k in TIME_ZONES.items() if k == zk]
     label = (" / ".join(names)) if names else zk
-    await edit_or_reply(event, f"✅ تم ضبط التوقيت: {label} ({zk})\nالمعاينة الآن: {preview}")
+    await edit_or_reply(event, f" تم ضبط التوقيت: {label} ({zk})\nالمعاينة الآن: {preview}")
 
 
 @cmd(r"وقتي شكل(?:\s|$)([\s\S]*)")
@@ -3455,18 +3455,18 @@ async def _(event):
             db_set("settings", "time_digit_style", k)
             ex = _format_time_decorated()
             db_set("settings", "time_digit_style", ds_backup)
-            lines.append(f"`{k}` ◂ {v['name']}  ⟶  `{ex}`")
+            lines.append(f"`{k}` | {v['name']}  ⟶  `{ex}`")
         return await edit_or_reply(
             event,
-            f"**◂ أشكال أرقام الاسم الوقتي (مع أمثلة حية):**\n" + "\n".join(lines) +
+            f"**| أشكال أرقام الاسم الوقتي (مع أمثلة حية):**\n" + "\n".join(lines) +
             f"\n\nللاختيار: `{PREFIX}وقتي شكل <رقم>`\nالحالي: {_time_digit_style()}",
         )
     k = int(arg)
     if k not in DIGIT_SETS:
-        return await edit_or_reply(event, "❌ رقم شكل غير موجود — اكتب `.وقتي شكل` لعرض القائمة")
+        return await edit_or_reply(event, " رقم شكل غير موجود — اكتب `.وقتي شكل` لعرض القائمة")
     db_set("settings", "time_digit_style", k)
     preview = _format_time_decorated()
-    await edit_or_reply(event, f"✅ تم ضبط الشكل: {DIGIT_SETS[k]['name']}\nالمعاينة: {preview}")
+    await edit_or_reply(event, f" تم ضبط الشكل: {DIGIT_SETS[k]['name']}\nالمعاينة: {preview}")
 
 
 @cmd(r"وقتي$")
@@ -3478,7 +3478,7 @@ async def _(event):
     label = (" / ".join(names)) if names else zk
     await edit_or_reply(
         event,
-        f"**◂ الاسم الوقتي:**\nالحالة: {'✅ شغال' if active else '⛔ متوقف'}\n"
+        f"**| الاسم الوقتي:**\nالحالة: {' شغال' if active else 'X متوقف'}\n"
         f"الشكل: {DIGIT_SETS.get(_time_digit_style(), DIGIT_SETS[0])['name']}\n"
         f"التوقيت: {label} ({zk})\n"
         f"المعاينة: {preview}\n\n"
@@ -3509,7 +3509,7 @@ async def _(event):
     m = await event.edit("🔄 جاري فحص التحديثات من GitHub...")
     try:
         commits = await asyncio.to_thread(_github_get, "commits?per_page=8")
-        lines = ["**◂ آخر التحديثات والإضافات (GitHub):**\n"]
+        lines = ["**| آخر التحديثات والإضافات (GitHub):**\n"]
         for c in commits:
             msg = c["commit"]["message"].split("\n")[0][:80]
             date = c["commit"]["author"]["date"][:10]
@@ -3530,7 +3530,7 @@ async def _(event):
         name = rel.get("name") or rel.get("tag_name") or "بدون اسم"
         body = rel.get("body") or "لا يوجد وصف"
         notes = body[:1500]
-        await edit_or_reply(m, f"**◂ آخر إصدار:** `{name}`\n\n{notes}\n\nرابط: {rel.get('html_url','')}")
+        await edit_or_reply(m, f"**| آخر إصدار:** `{name}`\n\n{notes}\n\nرابط: {rel.get('html_url','')}")
     except Exception as e:
         await edit_or_reply(m, f"- لا يوجد إصدار بعد أو خطأ: `{e}`")
 
@@ -3558,7 +3558,7 @@ async def _(event):
             if proc.returncode != 0:
                 await m.edit(f"- فشل السحب عبر git:\n`{out}`\n↻ جاري المحاولة عبر التنزيل المباشر...")
             else:
-                await m.edit(f"✅ تم تنزيل التحديث:\n`{out}`\n🔁 جاري إعادة التشغيل...")
+                await m.edit(f" تم تنزيل التحديث:\n`{out}`\n جاري إعادة التشغيل...")
                 await asyncio.sleep(1.5)
                 os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
                 return
@@ -3586,7 +3586,7 @@ async def _(event):
                     os.makedirs(os.path.dirname(target), exist_ok=True)
                     with zf.open(name) as src, open(target, "wb") as dst:
                         dst.write(src.read())
-        await m.edit("✅ تم تنزيل واستبدال الملفات ✓\n🔁 جاري إعادة التشغيل...")
+        await m.edit(" تم تنزيل واستبدال الملفات ✓\n جاري إعادة التشغيل...")
         await asyncio.sleep(1.5)
         os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
     except Exception as e:
@@ -3623,31 +3623,31 @@ async def _ai_auto_watcher(event):
 _VC_API = "https://audio.ettacent.dev/api/v1"
 
 VC_EFFECTS = [
-    ("1", "سنجاب", "🐿️", "صوت مرتفع كالسناجب"),
-    ("2", "عميق", "👹", "صوت رجال عميق"),
-    ("3", "روبوت", "🤖", "صوت روبوتي"),
-    ("4", "صدى", "🔊", "صدى واسع"),
-    ("5", "عكسي", "⏪", "قلب الصوت"),
-    ("6", "همس", "🤫", "صوت همس خفيف"),
-    ("7", "مكبر", "📢", "مكبر صوت"),
-    ("8", "هاتف", "📞", "صوت هاتف قديم"),
-    ("9", "كهف", "🦇", "صدى كهف عميق"),
-    ("10", "فضائي", "👽", "صوت كائن فضائي"),
-    ("11", "هيليوم", "🎈", "صوت مرتفع جداً"),
-    ("12", "شيطان", "😈", "صوت شيطاني"),
-    ("13", "راديو", "📻", "صوت راديو"),
-    ("14", "تحت الماء", "🌊", "صوت تحت الماء"),
-    ("15", "وحش", "👺", "صوت وحش مخيف"),
-    ("16", "8-بت", "🕹️", "صوت ألعاب قديمة"),
-    ("17", "فنطاز", "📼", "صوت فنطاز قديم"),
-    ("18", "بطيء", "🐢", "صوت مبطئ"),
-    ("19", "سريع", "🐇", "صوت مسرع"),
-    ("20", "تأتأة", "🔀", "صوت متقطع"),
-    ("21", "مكتوم", "🥱", "صوت مكتوم"),
-    ("22", "جوقة", "🎶", "صوت جوقة متعددة"),
-    ("23", "سكران", "🍺", "صوت سكران"),
-    ("24", "تريمولو", "📳", "صوت مرتجف"),
-    ("25", "معطل", "🔇", "بدون تأثير"),
+    ("1", "سنجاب", "🐿", "صوت مرتفع كالسناجب"),
+    ("2", "عميق", "", "صوت رجال عميق"),
+    ("3", "روبوت", "", "صوت روبوتي"),
+    ("4", "صدى", "", "صدى واسع"),
+    ("5", "عكسي", "", "قلب الصوت"),
+    ("6", "همس", "", "صوت همس خفيف"),
+    ("7", "مكبر", "", "مكبر صوت"),
+    ("8", "هاتف", "", "صوت هاتف قديم"),
+    ("9", "كهف", "", "صدى كهف عميق"),
+    ("10", "فضائي", "", "صوت كائن فضائي"),
+    ("11", "هيليوم", "", "صوت مرتفع جداً"),
+    ("12", "شيطان", "", "صوت شيطاني"),
+    ("13", "راديو", "", "صوت راديو"),
+    ("14", "تحت الماء", "", "صوت تحت الماء"),
+    ("15", "وحش", "", "صوت وحش مخيف"),
+    ("16", "8-بت", "🕹", "صوت ألعاب قديمة"),
+    ("17", "فنطاز", "", "صوت فنطاز قديم"),
+    ("18", "بطيء", "", "صوت مبطئ"),
+    ("19", "سريع", "", "صوت مسرع"),
+    ("20", "تأتأة", "", "صوت متقطع"),
+    ("21", "مكتوم", "", "صوت مكتوم"),
+    ("22", "جوقة", "", "صوت جوقة متعددة"),
+    ("23", "سكران", "", "صوت سكران"),
+    ("24", "تريمولو", "", "صوت مرتجف"),
+    ("25", "معطل", "", "بدون تأثير"),
 ]
 VC_KEYS = ["chipmunk","deep","robot","echo","reverse","whisper","megaphone","telephone",
            "cave","alien","helium","demon","radio","underwater","monster","eight_bit",
@@ -3703,19 +3703,19 @@ async def _(event):
     m = await event.edit("🔄 جاري التسجيل في خادم الصوت...")
     tok = await _vc_ensure_token()
     if tok:
-        await edit_or_reply(m, "✅ تم التسجيل في خادم الصوت بنجاح ✓")
+        await edit_or_reply(m, " تم التسجيل في خادم الصوت بنجاح ✓")
     else:
-        await edit_or_reply(m, "❌ فشل التسجيل — تأكد من اتصال الإنترنت")
+        await edit_or_reply(m, " فشل التسجيل — تأكد من اتصال الإنترنت")
 
 
 @cmd(r"صوتي(?:\s|$)([\s\S]*)")
 async def _(event):
     arg = (event.pattern_match.group(1) or "").strip()
     if not arg:
-        lines = "\n".join(f"`{num}` ◂ {emo} {name}  — {desc}" for num, name, emo, desc in VC_EFFECTS)
+        lines = "\n".join(f"`{num}` | {emo} {name}  — {desc}" for num, name, emo, desc in VC_EFFECTS)
         return await edit_or_reply(
             event,
-            f"**◂ قائمة تأثيرات الصوت (Voice Changer):**\n\n{lines}\n\n"
+            f"**| قائمة تأثيرات الصوت (Voice Changer):**\n\n{lines}\n\n"
             f"للتطبيق: رد على ملف صوتي وأرسل `{PREFIX}صوتي <رقم>`\n"
             f"مثال: `{PREFIX}صوتي 3` (روبوت)\n"
             f"للتسجيل أول مرة: `{PREFIX}صوتي سجل`",
@@ -3728,21 +3728,21 @@ async def _(event):
     except ValueError:
         pass
     if idx < 0 or idx >= len(VC_EFFECTS):
-        return await edit_or_reply(event, f"❌ رقم غير صالح (1-{len(VC_EFFECTS)}). اكتب `{PREFIX}صوتي` لعرض القائمة")
+        return await edit_or_reply(event, f" رقم غير صالح (1-{len(VC_EFFECTS)}). اكتب `{PREFIX}صوتي` لعرض القائمة")
     reply = await event.get_reply_message()
     if not reply or not (reply.audio or reply.voice or reply.video or reply.document or reply.video_note):
         return await edit_delete(event, "- رد على ملف صوتي/فيديو/أغنية أولاً", 8)
     num, name, emo, desc = VC_EFFECTS[idx]
     effect_key = VC_KEYS[idx]
     if effect_key == "none":
-        return await edit_or_reply(event, "🔇 التأثير معطل — اختر تأثيراً آخر")
+        return await edit_or_reply(event, " التأثير معطل — اختر تأثيراً آخر")
     m = await event.edit(f"{emo} جاري تطبيق تأثير: {name}...")
     tmp_in = None
     tmp_out = None
     try:
         tok = await _vc_ensure_token()
         if not tok:
-            return await m.edit("❌ لم يتم التسجيل في خادم الصوت. أرسل `.صوتي سجل` أولاً")
+            return await m.edit(" لم يتم التسجيل في خادم الصوت. أرسل `.صوتي سجل` أولاً")
         tmp_in = await event.client.download_media(reply.media)
         tmp_out = os.path.join(DATA_DIR, f"vc_{int(time.time()*1000)}.ogg")
         import requests as req
@@ -3753,9 +3753,9 @@ async def _(event):
             resp = req.post(f"{_VC_API}/process", files=files, data=data, headers=headers, timeout=120)
         if resp.status_code == 401:
             db_set("settings", "vc_token", "")
-            return await m.edit("❌ التوكن منتهي — أرسل `.صوتي سجل` لإعادة التسجيل")
+            return await m.edit(" التوكن منتهي — أرسل `.صوتي سجل` لإعادة التسجيل")
         if resp.status_code != 200 or len(resp.content) < 100:
-            return await m.edit(f"❌ فشل المعالجة (رمز {resp.status_code})")
+            return await m.edit(f" فشل المعالجة (رمز {resp.status_code})")
         with open(tmp_out, "wb") as f:
             f.write(resp.content)
         try:
@@ -3778,7 +3778,7 @@ async def _(event):
         except Exception:
             pass
     except Exception as e:
-        await m.edit(f"❌ خطأ: {e}")
+        await m.edit(f" خطأ: {e}")
     finally:
         for f in (tmp_in, tmp_out):
             if f and os.path.exists(f):
@@ -3833,7 +3833,7 @@ async def _resume_report_loop(target):
             cfg["running"] = False
             db_write("report_cfg", cfg)
             try:
-                await client.send_message("me", f"⛔ توقّف البلاغ المستمر تلقائياً:\n{res}\n📊 بلاغات مُرسلة: {sent}")
+                await client.send_message("me", f"X توقّف البلاغ المستمر تلقائياً:\n{res}\n بلاغات مُرسلة: {sent}")
             except Exception:
                 pass
             return
@@ -3873,7 +3873,7 @@ async def _startup():
     print(f"  الحساب: {get_display_name(me)} | {me.id}")
     print(f"  البادئة: {PREFIX} | أرسل {PREFIX}الاوامر")
     print(f"  تركيبات السب: {insult_combos():,}")
-    print(f"  حماية الفلود: {'🛡️ مفعلة' if flood_guard_enabled else '🚫 معطلة'}")
+    print(f"  حماية الفلود: {'🛡 مفعلة' if flood_guard_enabled else ' معطلة'}")
     print(f"  نوع الحساب: {'بريميوم' if is_premium else 'عادي'}")
     print("=" * 45)
     await _resume_persistent_tasks()
@@ -3900,7 +3900,7 @@ def main():
         print("  أدخل رقم هاتفك مع رمز الدولة (مثال: +96478...)")
         print("=" * 45)
         try:
-            phone = input("📱 رقم الهاتف: ").strip()
+            phone = input("Phone رقم الهاتف: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("تم الإلغاء")
             sys.exit(1)
@@ -3917,8 +3917,8 @@ def main():
             print("✗ البيانات (API_ID/API_HASH) غير صحيحة.")
             print("  أدخل بياناتك الصحيحة من https://my.telegram.org/apps")
             try:
-                aid = input("🔑 API_ID: ").strip()
-                ahash = input("🔑 API_HASH: ").strip()
+                aid = input("* API_ID: ").strip()
+                ahash = input("* API_HASH: ").strip()
             except (EOFError, KeyboardInterrupt):
                 print("تم الإلغاء")
                 sys.exit(1)
