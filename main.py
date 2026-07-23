@@ -3649,9 +3649,13 @@ async def _(event):
         await asyncio.wait_for(proc.wait(), timeout=120)
         if proc.returncode != 0:
             return await m.edit(f"❌ فشل تطبيق التأثير — تأكد من أن الملف صالح")
-        import mutagen
         try:
-            dur = int(mutagen.File(tmp_out).info.length)
+            r = await asyncio.create_subprocess_exec(
+                "ffprobe", "-i", tmp_out, "-show_entries", "format=duration",
+                "-v", "quiet", "-of", "csv=p=0",
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+            out, _ = await asyncio.wait_for(r.communicate(), timeout=15)
+            dur = int(float(out.decode().strip())) if out else 0
         except Exception:
             dur = 0
         await event.client.send_file(
