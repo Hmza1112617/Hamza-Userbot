@@ -382,7 +382,8 @@ MENU_MAIN = f"""**[ سورس حمزة ]**
 `{PREFIX}م15` ◂ أوامر الذكاء الاصطناعي
 `{PREFIX}م16` ◂ أوامر التحديثات
 `{PREFIX}م17` ◂ باند و شد (فحص الروابط)
-`{PREFIX}م18` ◂ الاسم الوقتي (وقت حي بجانب اسمك)"""
+`{PREFIX}م18` ◂ الاسم الوقتي (وقت حي بجانب اسمك)
+`{PREFIX}م19` ◂ محوّل الصوت (تغيير الصوت بمؤثرات)"""
 
 MENU = {
     "م1": """**◂ أوامر الإدارة :**
@@ -529,6 +530,13 @@ MENU = {
 `{p}وقتي ايقاف` ◂ يوقفه
 `{p}وقتي شكل <رقم>` ◂ يختار شكل زخرفة الأرقام (مع أمثلة حية)
 `{p}وقتي توقيت <بلد/مدينة>` ◂ يختار التوقيت (بغداد/السعودية/مصر/لندن/...)""",
+
+    "م19": """**◂ محوّل الصوت (تغيير الصوت بمؤثرات):**
+
+`{p}صوتي` ◂ عرض قائمة التأثيرات المتاحة
+`{p}صوتي <رقم>` ◂ بالرد على مقطع صوتي/فيديو لتطبيق التأثير وتحويله لبصمة صوت
+
+**التأثيرات:** روبوت، همس، صدى، كهف، ذكر عميق، طفل/بنوته، فضائي، راديو، مشوش، عكس، سريع، بطيء، مكبر، غرفة، وحش، يرتجف، جوقة، امرأة، مخنث""",
 }
 
 
@@ -3579,7 +3587,86 @@ async def _ai_auto_watcher(event):
     except Exception:
         pass
 
+# ============================================================
+#           محوّل الصوت | VOICE CHANGER (م19)
+# ============================================================
 
+VOICE_EFFECTS = {
+    "1": {"name": "روبوت", "desc": "صوت روبوتي", "filter": "afftfilt=real='hypot(re,im)*sin(0)':imag='hypot(re,im)*cos(0)':win_size=512:overlap=0.75"},
+    "2": {"name": "همس", "desc": "صوت همس خفيف", "filter": "afftfilt=real='hypot(re,im)*cos((random(0)*2-1)*2*3.14)':imag='hypot(re,im)*sin((random(1)*2-1)*2*3.14)':win_size=128:overlap=0.8"},
+    "3": {"name": "صدى", "desc": "صدى واسع", "filter": "aecho=0.8:0.9:1000:0.3"},
+    "4": {"name": "كهف", "desc": "صدى كهف عميق", "filter": "aecho=0.8:0.88:50:0.4"},
+    "5": {"name": "ذكر عميق", "desc": "صوت رجال عميق", "filter": "rubberband=pitch=0.7"},
+    "6": {"name": "طفل/بنوته", "desc": "صوت طفل أو بنت", "filter": "rubberband=pitch=1.8"},
+    "7": {"name": "فضائي", "desc": "صوت كائن فضائي", "filter": "vibrato=f=6:d=0.8,aphaser=type=t:speed=0.5:decay=0.7"},
+    "8": {"name": "راديو", "desc": "صوت راديو قديم", "filter": "highpass=f=300,lowpass=f=3400"},
+    "9": {"name": "مشوش", "desc": "صوت مقطع مشوش", "filter": "acrusher=bits=4:mode=log:aa=1"},
+    "10": {"name": "عكس", "desc": "يقلب الصوت من الآخر", "filter": "areverse"},
+    "11": {"name": "سريع", "desc": "صوت مسرع", "filter": "rubberband=tempo=1.5"},
+    "12": {"name": "بطيء", "desc": "صوت مبطئ", "filter": "rubberband=tempo=0.7"},
+    "13": {"name": "مكبر", "desc": "صوت مضخم 3 أضعاف", "filter": "volume=3.0"},
+    "14": {"name": "غرفة", "desc": "صدى غرفة صغيرة", "filter": "aecho=0.8:0.9:200:0.2"},
+    "15": {"name": "وحش", "desc": "صوت وحش مخيف", "filter": "rubberband=pitch=0.5:tempo=0.8"},
+    "16": {"name": "يرتجف", "desc": "صوت مرتجف", "filter": "tremolo=f=8:d=0.5"},
+    "17": {"name": "جوقة", "desc": "صوت جوقة متعددة", "filter": "chorus=0.5:0.9:50|60|70:0.4|0.3|0.2:0.25|0.4|0.3:2|2.3|1.3"},
+    "18": {"name": "امرأة", "desc": "صوت نسائي", "filter": "rubberband=pitch=1.3"},
+    "19": {"name": "مخنث", "desc": "صوت أنفي", "filter": "equalizer=f=1000:t=q:w=1:g=10,equalizer=f=3000:t=q:w=1:g=-10"},
+}
+
+
+@cmd(r"صوتي(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg:
+        lines = "\n".join(f"`{k}` ◂ {v['name']} — {v['desc']}" for k, v in VOICE_EFFECTS.items())
+        return await edit_or_reply(
+            event,
+            f"**◂ قائمة تأثيرات الصوت:**\n\n{lines}\n\n"
+            f"للتطبيق: رد على ملف صوتي وأرسل `{PREFIX}صوتي <رقم>`\n"
+            f"مثال: `{PREFIX}صوتي 1` (روبوت)",
+        )
+    if arg not in VOICE_EFFECTS:
+        return await edit_or_reply(event, f"❌ رقم تأثير غير موجود. اكتب `{PREFIX}صوتي` لعرض القائمة")
+    reply = await event.get_reply_message()
+    if not reply or not (reply.audio or reply.voice or reply.video or reply.document or reply.video_note):
+        return await edit_delete(event, f"- رد على ملف صوتي/فيديو/أغنية أولاً", 8)
+    effect = VOICE_EFFECTS[arg]
+    m = await event.edit(f"🎤 جاري تطبيق تأثير: {effect['name']}...")
+    tmp_in = None
+    tmp_out = None
+    try:
+        tmp_in = await event.client.download_media(reply.media)
+        tmp_out = tmp_in + "_voice.ogg"
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-i", tmp_in,
+            "-af", effect["filter"],
+            "-c:a", "libopus",
+            "-b:a", "32k", "-ar", "48000", "-ac", "1",
+            "-y", tmp_out,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await asyncio.wait_for(proc.wait(), timeout=120)
+        if proc.returncode != 0:
+            return await m.edit(f"❌ فشل تطبيق التأثير — تأكد من أن الملف صالح")
+        await event.client.send_file(
+            event.chat_id, tmp_out,
+            voice_note=True,
+            attributes=[types.DocumentAttributeAudio(
+                voice=True, duration=0, title="", performer="",
+            )],
+            reply_to=reply.id,
+        )
+        await m.delete()
+    except asyncio.TimeoutError:
+        await m.edit("❌ انتهت مهلة التحويل (الملف كبير جداً)")
+    except Exception as e:
+        await m.edit(f"❌ خطأ: {e}")
+    finally:
+        for f in (tmp_in, tmp_out):
+            if f and os.path.exists(f):
+                try: os.remove(f)
+                except Exception: pass
 
 
 async def _resume_persistent_tasks():
