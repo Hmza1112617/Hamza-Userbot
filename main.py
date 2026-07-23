@@ -1446,10 +1446,10 @@ def insult_combos():
 
 
 def _fill_blanks(text):
-    """يملأ كل ( ) في النص بعنصر عشوائي من حشوات"""
+    """يملأ كل (     ) في النص بعنصر عشوائي من حشوات ويزيل المسافات داخلها"""
     fillers = INSULTS.get("حشوات") or [""]
     while "(" in text and ")" in text:
-        text = text.replace("(", random.choice(fillers), 1).replace(")", "", 1)
+        text = re.sub(r"\(\s*\)", random.choice(fillers), text, count=1)
     return text
 
 
