@@ -499,7 +499,8 @@ MENU = {
     "م12": """**◂ أوامر الصيغ :**
 
 `{p}ملصق` ◂ بالرد على صورة لتحويلها ملصق
-`{p}صورة` ◂ بالرد على ملصق لتحويله صورة""",
+`{p}صورة` ◂ بالرد على ملصق لتحويله صورة
+`{p}صوت` ◂ بالرد على مقطع/أغنية/صوت/فيديو لتحويله بصمة صوت (voice)""",
     "م13": """**◂ أوامر التسلية :**
 
 `{p}نسبة الحب` ◂ لعرض نسبة الحب
@@ -1773,6 +1774,54 @@ async def _(event):
         await m.delete()
     except Exception as e:
         await m.edit(f"`{e}`")
+
+
+@cmd(r"صوت$")
+async def _(event):
+    reply = await event.get_reply_message()
+    if not reply or not (reply.audio or reply.voice or reply.video or reply.document or reply.video_note):
+        return await edit_delete(event, "- رد على مقطع/أغنية/صوت/فيديو لتحويله إلى بصمة صوت", 8)
+    m = await event.edit("- جاري التحويل إلى بصمة صوت...")
+    tmp_in = None
+    tmp_out = None
+    try:
+        tmp_in = await event.client.download_media(reply.media)
+        tmp_out = tmp_in + "_voice.ogg"
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-i", tmp_in,
+            "-vn", "-c:a", "libopus",
+            "-b:a", "32k", "-ar", "48000", "-ac", "1",
+            "-y", tmp_out,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await asyncio.wait_for(proc.wait(), timeout=120)
+        if proc.returncode != 0:
+            return await m.edit("❌ فشل التحويل — تأكد من أن الملف صالح")
+        import mimetypes
+        await event.client.send_file(
+            event.chat_id, tmp_out,
+            voice_note=True,
+            attributes=[types.DocumentAttributeAudio(
+                voice=True,
+                duration=0,
+                title="",
+                performer="",
+            )],
+            reply_to=reply.id,
+        )
+        await m.delete()
+    except asyncio.TimeoutError:
+        await m.edit("❌ انتهت مهلة التحويل (الملف كبير جداً)")
+    except Exception as e:
+        await m.edit(f"❌ خطأ: {e}")
+    finally:
+        for f in (tmp_in, tmp_out):
+            if f and os.path.exists(f):
+                try:
+                    os.remove(f)
+                except Exception:
+                    pass
 
 
 # ============================================================
