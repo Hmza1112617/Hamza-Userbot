@@ -24,6 +24,20 @@ try:
 except ImportError:
     brotli = None
 
+try:
+    from getids import get_date_as_string
+except ImportError:
+    import subprocess, sys
+    try:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "git+https://github.com/AmanoTeam/python-getids.git",
+             "--break-system-packages", "--quiet"],
+            timeout=60,
+        )
+        from getids import get_date_as_string
+    except Exception:
+        get_date_as_string = None
+
 from telethon import TelegramClient, events, functions, types
 from telethon.errors import (
     ChatAdminRequiredError,
@@ -851,12 +865,14 @@ async def _(event):
         lines.append(f"دولة الهاتف: {flag} {country_code}")
     else:
         lines.append("دولة الهاتف: غير متوفرة")
-    try:
-        from getids import get_date_as_string
-        est_status, est_date = get_date_as_string(user.id)
-        lines.append(f"التقدير: {est_date} ({est_status})")
-    except Exception:
-        lines.append("التقدير: غير متاح (ثبت getids)")
+    if get_date_as_string:
+        try:
+            est_status, est_date = get_date_as_string(user.id)
+            lines.append(f"التقدير: {est_date} ({est_status})")
+        except Exception:
+            lines.append("التقدير: فشل الحساب")
+    else:
+        lines.append("التقدير: غير متاح")
     lines.append(f"الايدي: {user.id}")
     lines.append(f"المعرف: @{user.username if user.username else 'لايوجد'}")
     await edit_or_reply(m, "\n".join(lines))
