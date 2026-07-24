@@ -836,6 +836,34 @@ async def _(event):
     await edit_or_reply(event, txt)
 
 
+_ID_DATES = [
+    (1, 1376448000), (1000000, 1383264000), (5000000, 1384905600),
+    (10000000, 1389744000), (50000000, 1404950400), (100000000, 1425513600),
+    (200000000, 1462060800), (500000000, 1515542400), (1000000000, 1573776000),
+    (1500000000, 1604188800), (2000000000, 1634256000), (2500000000, 1648771200),
+    (3000000000, 1663200000), (3500000000, 1675209600), (4000000000, 1688169600),
+    (4500000000, 1701388800), (5000000000, 1714521600), (5500000000, 1727740800),
+    (6000000000, 1740787200), (6500000000, 1754006400), (7000000000, 1767225600),
+    (7500000000, 1780444800), (8000000000, 1793664000),
+]
+
+
+def _estimate_id_date(uid):
+    pts = sorted(_ID_DATES, key=lambda x: x[0])
+    if uid <= pts[0][0]:
+        return datetime.fromtimestamp(pts[0][1]).strftime("%m/%Y"), "older_than"
+    if uid >= pts[-1][0]:
+        return datetime.fromtimestamp(pts[-1][1]).strftime("%m/%Y"), "newer_than"
+    for i in range(len(pts) - 1):
+        if pts[i][0] <= uid <= pts[i + 1][0]:
+            x0, y0 = pts[i]
+            x1, y1 = pts[i + 1]
+            frac = (uid - x0) / (x1 - x0) if x1 != x0 else 0
+            ts = y0 + (y1 - y0) * frac
+            return datetime.fromtimestamp(ts).strftime("%m/%Y"), "aprox"
+    return datetime.fromtimestamp(pts[-1][1]).strftime("%m/%Y"), "newer_than"
+
+
 def _flag_from_country(code):
     if not code or len(code) != 2:
         return ""
@@ -865,14 +893,8 @@ async def _(event):
         lines.append(f"دولة الهاتف: {flag} {country_code}")
     else:
         lines.append("دولة الهاتف: غير متوفرة")
-    if get_date_as_string:
-        try:
-            est_status, est_date = get_date_as_string(user.id)
-            lines.append(f"التقدير: {est_date} ({est_status})")
-        except Exception:
-            lines.append("التقدير: فشل الحساب")
-    else:
-        lines.append("التقدير: غير متاح")
+    est_date, est_status = _estimate_id_date(user.id)
+    lines.append(f"التقدير: {est_date} ({est_status})")
     lines.append(f"الايدي: {user.id}")
     lines.append(f"المعرف: @{user.username if user.username else 'لايوجد'}")
     await edit_or_reply(m, "\n".join(lines))
