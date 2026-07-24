@@ -411,7 +411,8 @@ MENU = {
 
 `{p}الايدي` | بالرد أو المعرف لعرض الايدي
 `{p}كشف` | لعرض معلومات مستخدم
-`{p}صورة` | لجلب صورة مستخدم""",
+`{p}صورة` | لجلب صورة مستخدم
+`{p}انشاء` | بالرد/المعرف لعرض تاريخ الإنشاء ودولة الحساب""",
     "م4": """**| أوامر الردود :**
 
 `{p}اضف رد` <كلمة> | بالرد لإضافة رد على كلمة
@@ -819,6 +820,40 @@ async def _(event):
 **مقيد:** {'نعم' if getattr(user, 'restricted', False) else 'لا'}
 **الرابط:** [هنا](tg://user?id={user.id})"""
     await edit_or_reply(event, txt)
+
+
+def _flag_from_country(code):
+    if not code or len(code) != 2:
+        return ""
+    return chr(0x1F1E6 + ord(code[0]) - 65) + chr(0x1F1E6 + ord(code[1]) - 65)
+
+
+@cmd(r"انشاء(?:\s|$)([\s\S]*)")
+async def _(event):
+    user, uid = await get_target_user(event)
+    if not user:
+        return await edit_delete(event, "- رد على شخص أو ضع معرفه", 8)
+    m = await event.edit("- جاري جلب المعلومات...")
+    try:
+        result = await client(functions.users.GetFullUserRequest(user))
+        settings = result.full_user.settings
+    except Exception as e:
+        return await m.edit(f"- فشل جلب المعلومات: {e}")
+    reg = getattr(settings, "registration_month", None)
+    country_code = getattr(settings, "phone_country", None)
+    flag = _flag_from_country(country_code) if country_code else ""
+    lines = [f"**| معلومات إنشاء الحساب لـ {get_display_name(user)}**"]
+    if reg:
+        lines.append(f"تاريخ الإنشاء: {reg}")
+    else:
+        lines.append("تاريخ الإنشاء: غير متوفر")
+    if country_code:
+        lines.append(f"دولة الهاتف: {flag} {country_code}")
+    else:
+        lines.append("دولة الهاتف: غير متوفرة")
+    lines.append(f"الايدي: {user.id}")
+    lines.append(f"المعرف: @{user.username if user.username else 'لايوجد'}")
+    await edit_or_reply(m, "\n".join(lines))
 
 
 @cmd(r"صورة(?:\s|$)([\s\S]*)")
