@@ -836,21 +836,27 @@ async def _(event):
     m = await event.edit("- جاري جلب المعلومات...")
     try:
         result = await client(functions.users.GetFullUserRequest(user))
-        settings = result.full_user.settings
-    except Exception as e:
-        return await m.edit(f"- فشل جلب المعلومات: {e}")
-    reg = getattr(settings, "registration_month", None)
-    country_code = getattr(settings, "phone_country", None)
+        settings = result.settings
+    except Exception:
+        settings = None
+    reg = getattr(settings, "registration_month", None) if settings else None
+    country_code = getattr(settings, "phone_country", None) if settings else None
     flag = _flag_from_country(country_code) if country_code else ""
     lines = [f"**| معلومات إنشاء الحساب لـ {get_display_name(user)}**"]
     if reg:
-        lines.append(f"تاريخ الإنشاء: {reg}")
+        lines.append(f"تاريخ الإنشاء (رسمي): {reg}")
     else:
-        lines.append("تاريخ الإنشاء: غير متوفر")
+        lines.append("تاريخ الإنشاء (رسمي): غير متوفر")
     if country_code:
         lines.append(f"دولة الهاتف: {flag} {country_code}")
     else:
         lines.append("دولة الهاتف: غير متوفرة")
+    try:
+        from getids import get_date_as_string
+        est_status, est_date = get_date_as_string(user.id)
+        lines.append(f"التقدير: {est_date} ({est_status})")
+    except Exception:
+        lines.append("التقدير: غير متاح (ثبت getids)")
     lines.append(f"الايدي: {user.id}")
     lines.append(f"المعرف: @{user.username if user.username else 'لايوجد'}")
     await edit_or_reply(m, "\n".join(lines))
