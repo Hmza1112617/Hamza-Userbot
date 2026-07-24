@@ -847,8 +847,8 @@ _ID_DATES = [
 ]
 
 
-def _now_month():
-    return datetime.now().strftime("%m/%Y")
+def _now_date():
+    return datetime.now().strftime("%Y-%m-%d")
 
 
 def _estimate_id_date(uid):
@@ -856,11 +856,11 @@ def _estimate_id_date(uid):
     for pid, ptime in pts:
         if uid == pid:
             dt = datetime.fromtimestamp(ptime)
-            return (dt.strftime("%m/%Y"), "ضبط") if dt <= datetime.now() else (_now_month(), "جديد")
+            return (dt.strftime("%Y-%m-%d"), "ضبط") if dt <= datetime.now() else (_now_date(), "جديد")
     if uid < pts[0][0]:
-        return datetime.fromtimestamp(pts[0][1]).strftime("%m/%Y"), "older_than"
+        return datetime.fromtimestamp(pts[0][1]).strftime("%Y-%m-%d"), "قديم"
     if uid > pts[-1][0]:
-        return _now_month(), "جديد"
+        return _now_date(), "جديد"
     for i in range(len(pts) - 1):
         if pts[i][0] < uid < pts[i + 1][0]:
             x0, y0 = pts[i]
@@ -869,9 +869,9 @@ def _estimate_id_date(uid):
             ts = y0 + (y1 - y0) * frac
             dt = datetime.fromtimestamp(ts)
             if dt > datetime.now():
-                return _now_month(), "جديد"
-            return dt.strftime("%m/%Y"), "aprox"
-    return _now_month(), "جديد"
+                return _now_date(), "جديد"
+            return dt.strftime("%Y-%m-%d"), "aprox"
+    return _now_date(), "جديد"
 
 
 def _flag_from_country(code):
@@ -895,12 +895,10 @@ async def _(event):
     country_code = getattr(settings, "phone_country", None) if settings else None
     flag = _flag_from_country(country_code) if country_code else ""
     est_date, est_status = _estimate_id_date(user.id)
-    lines = [f"**| معلومات إنشاء الحساب لـ {get_display_name(user)}**"]
-    lines.append(f"تاريخ الإنشاء: {est_date} ({est_status})")
+    lines = [f"• تاريخ الانشاء هو"]
+    lines.append(f"• {est_date} ({est_status})")
     if country_code:
-        lines.append(f"دولة الهاتف: {flag} {country_code}")
-    lines.append(f"الايدي: {user.id}")
-    lines.append(f"المعرف: @{user.username if user.username else 'لايوجد'}")
+        lines.append(f"• دولة: {flag} {country_code}")
     await edit_or_reply(m, "\n".join(lines))
 
 
