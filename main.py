@@ -843,9 +843,12 @@ _ID_DATES = [
     (1500000000, 1604188800), (2000000000, 1634256000), (2500000000, 1648771200),
     (3000000000, 1663200000), (3500000000, 1675209600), (4000000000, 1688169600),
     (4500000000, 1701388800), (5000000000, 1714521600), (5500000000, 1727740800),
-    (6000000000, 1740787200), (6500000000, 1754006400), (7000000000, 1767225600),
-    (7500000000, 1780444800), (8000000000, 1793664000),
+    (6000000000, 1740787200), (6500000000, 1754006400),
 ]
+
+
+def _now_month():
+    return datetime.now().strftime("%m/%Y")
 
 
 def _estimate_id_date(uid):
@@ -853,15 +856,18 @@ def _estimate_id_date(uid):
     if uid <= pts[0][0]:
         return datetime.fromtimestamp(pts[0][1]).strftime("%m/%Y"), "older_than"
     if uid >= pts[-1][0]:
-        return datetime.fromtimestamp(pts[-1][1]).strftime("%m/%Y"), "newer_than"
+        return _now_month(), "جديد"
     for i in range(len(pts) - 1):
         if pts[i][0] <= uid <= pts[i + 1][0]:
             x0, y0 = pts[i]
             x1, y1 = pts[i + 1]
             frac = (uid - x0) / (x1 - x0) if x1 != x0 else 0
             ts = y0 + (y1 - y0) * frac
-            return datetime.fromtimestamp(ts).strftime("%m/%Y"), "aprox"
-    return datetime.fromtimestamp(pts[-1][1]).strftime("%m/%Y"), "newer_than"
+            dt = datetime.fromtimestamp(ts)
+            if dt > datetime.now():
+                return _now_month(), "جديد"
+            return dt.strftime("%m/%Y"), "aprox"
+    return _now_month(), "جديد"
 
 
 def _flag_from_country(code):
