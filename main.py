@@ -2017,6 +2017,74 @@ async def _ai_resolve_ent(target):
             return None
 
 
+async def _ai_run_any_tool(name, p):
+    """يحاول تنفيذ أي اسم أداة كدالة Telethon حقيقية تلقائياً"""
+    p = p or {}
+    ns_name = None
+    method = None
+    params = {}
+    if "." in str(name):
+        ns_name, method = str(name).split(".", 1)
+    elif isinstance(p.get("request"), dict) and p["request"].get("_"):
+        full = p["request"]["_"]
+        if "." in full:
+            ns_name, method = full.split(".", 1)
+        else:
+            method = full
+        params = {k: v for k, v in p["request"].items() if k != "_"}
+    elif p.get("_") and "." in str(p["_"]):
+        ns_name, method = str(p["_"]).split(".", 1)
+        params = {k: v for k, v in p.items() if k != "_"}
+    else:
+        method = str(name)
+        params = p
+    if not method:
+        return f" أداة غير معروفة: {name}"
+    ns = None
+    if ns_name:
+        ns = getattr(functions, ns_name, None) or getattr(types, ns_name, None)
+    if ns is None:
+        for candidate in (functions, types):
+            try:
+                ns = getattr(candidate, ns_name, None) if ns_name else None
+            except Exception:
+                ns = None
+            if ns:
+                break
+            fn = _find_any_method(candidate, method)
+            if fn:
+                return await _ai_run_direct(fn, params)
+    if ns is None:
+        return f" لا توجد وحدة للدالة {method}"
+    fn = getattr(ns, method, None)
+    if fn is None:
+        fn = _find_any_method(ns, method)
+    if fn is None:
+        return f" لا توجد دالة {method}"
+    return await _ai_run_direct(fn, params)
+
+
+def _find_any_method(ns, method):
+    if not method:
+        return None
+    for attr in dir(ns):
+        if attr == method or attr.endswith(method) or method.endswith(attr):
+            obj = getattr(ns, attr, None)
+            if callable(obj):
+                return obj
+    return None
+
+
+async def _ai_run_direct(fn, params):
+    """ينفّذ دالة Telethon مباشرة مع تحويل المعطيات النصية لكيانات"""
+    try:
+        params = await _ai_coerce_params(fn, params)
+        res = await client(fn(**params))
+        return f" نتيجة {fn.__name__}:\n{str(res)[:3000]}"
+    except Exception as e:
+        return f" خطأ تنفيذ {fn.__name__}: {e}"
+
+
 async def _ai_run_raw_tl(p):
     """ينفّذ استدعاء Telethon خام بلا قيود — يدعم عدة أشكال من الذكاء:
     الشكل 1 (الموثّق): {"namespace","method","params"}
@@ -2246,7 +2314,7 @@ async def _ai_run_tool(call):
             return " تم التوجيه"
         if name == "raw_tl":
             return await _ai_run_raw_tl(p)
-        return f" أداة غير معروفة: {name}"
+        return await _ai_run_any_tool(name, p)
     except Exception as e:
         return f" خطأ تنفيذ {name}: {e}"
 
