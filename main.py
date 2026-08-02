@@ -553,11 +553,11 @@ MENU = {
 
 **التأثيرات:** سنجاب، عميق، روبوت، صدى، عكسي، همس، مكبر، هاتف، كهف، فضائي، هيليوم، شيطان، راديو، تحت الماء، وحش، 8-بت، فنطاز، بطيء، سريع، تأتأة، مكتوم، جوقة، سكران، تريمولو""",
 
-    "م20": """**| الكتم (حذف رسائل المكتومين):**
+    "م20": """**| الكتم (حذف رسائل المكتومين في كل الأماكن):**
 
-`{p}كتم` | بالرد أو المعرف لكتم شخص (تُحذف رسائله تلقائياً)
+`{p}كتم` | بالرد أو المعرف لكتم شخص (تُحذف رسائله في الخاص والمجموعات والقنوات)
 `{p}الغاء كتم` | بالرد أو المعرف لفك كتم شخص
-`{p}المكتومين` | لعرض قائمة المكتومين في هذه المجموعة
+`{p}المكتومين` | لعرض قائمة المكتومين
 `{p}مسح كل المكتومين` | لفك كتم جميع المكتومين""",
 }
 
@@ -625,70 +625,57 @@ def _mutes_write(data):
     db_write("mutes", data)
 
 
-def _muted_ids(chat_id):
-    return set(_mutes_read().get(str(chat_id), []))
+def _muted_global_ids():
+    return set(int(k) for k in _mutes_read().keys())
 
 
-@cmd(r"كتم(?:\s|$)([\s\S]*)", groups_only=True)
+@cmd(r"كتم(?:\s|$)([\s\S]*)")
 async def _(event):
     user, uid = await get_target_user(event)
     if not uid:
         return await edit_delete(event, "- رد على شخص أو ضع معرفه", 8)
     data = _mutes_read()
-    key = str(event.chat_id)
-    ids = set(data.get(key, []))
-    ids.add(uid)
-    data[key] = list(ids)
+    data[str(uid)] = get_display_name(user)
     _mutes_write(data)
-    await edit_or_reply(event, f"تم كتم {mention(user)} — ستُحذف رسائله تلقائياً ✓")
+    await edit_or_reply(event, f"تم كتم {mention(user)} — ستُحذف رسائله في كل الأماكن ✓")
 
 
-@cmd(r"الغاء كتم(?:\s|$)([\s\S]*)", groups_only=True)
+@cmd(r"الغاء كتم(?:\s|$)([\s\S]*)")
 async def _(event):
     user, uid = await get_target_user(event)
     if not uid:
         return await edit_delete(event, "- رد على شخص أو ضع معرفه", 8)
     data = _mutes_read()
-    key = str(event.chat_id)
-    ids = set(data.get(key, []))
-    if uid in ids:
-        ids.discard(uid)
-        data[key] = list(ids)
+    if str(uid) in data:
+        del data[str(uid)]
         _mutes_write(data)
         await edit_or_reply(event, f"تم فك كتم {mention(user)} ✓")
     else:
         await edit_delete(event, "- هذا الشخص ليس مكتوماً", 8)
 
 
-@cmd(r"المكتومين$", groups_only=True)
-async def _(event):
-    ids = _muted_ids(event.chat_id)
-    if not ids:
-        return await edit_or_reply(event, "- لا يوجد مكتومون في هذه المجموعة")
-    lines = []
-    for uid in ids:
-        try:
-            u = await event.client.get_entity(uid)
-            name = get_display_name(u)
-        except Exception:
-            name = f"id {uid}"
-        lines.append(f"• {name} — `{uid}`")
-    await edit_or_reply(event, "**| المكتومون (تُحذف رسائلهم):**\n\n" + "\n".join(lines))
-
-
-@cmd(r"مسح كل المكتومين$", groups_only=True)
+@cmd(r"المكتومين$")
 async def _(event):
     data = _mutes_read()
-    data.pop(str(event.chat_id), None)
-    _mutes_write(data)
-    await edit_or_reply(event, "تم فك كتم كل المكتومين في هذه المجموعة ✓")
+    if not data:
+        return await edit_or_reply(event, "- لا يوجد مكتومون")
+    lines = []
+    for uid, name in data.items():
+        lines.append(f"• {name} — `{uid}`")
+    await edit_or_reply(event, "**| المكتومون (تُحذف رسائلهم في كل الأماكن):**\n\n" + "\n".join(lines))
+
+
+@cmd(r"مسح كل المكتومين$")
+async def _(event):
+    _mutes_write({})
+    await edit_or_reply(event, "تم فك كتم جميع المكتومين ✓")
 
 
 @client.on(events.NewMessage(incoming=True))
 async def _mutes_watcher(event):
-    if not event.is_group or not event.sender_id:
+    if not event.sender_id:
         return
-    if event.sender_id in _muted_ids(event.chat_id):
+    if event.sender_id in _muted_global_ids():
         try:
             await event.delete()
         except Exception:
