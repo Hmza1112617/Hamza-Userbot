@@ -2769,9 +2769,9 @@ async def _ai_execute_action(instruction, event):
                 return f" وُجد: {get_display_name(ent)} | @{getattr(ent,'username',None) or 'لايوجد'} | id {ent.id}"
             return f" وُجد كيان: {ent}"
 
-        m = _re.search(r"معلومات\s+(?:المستخدم\s+|الرقم\s+)?(.+)", ins)
-        if m:
-            ent = await _resolve(m.group(1).strip())
+        m = _re.search(r"(?:من\s+هذا|من\s+هو|من\s+هي|معلومات\s+(?:المستخدم\s+|الرقم\s+)?|من\s+يكون)\s*(.+)?", ins)
+        if m and (m.group(1) or _re.search(r"من\s+هذا|من\s+هو", ins)):
+            ent = await _resolve((m.group(1) or "").strip())
             if isinstance(ent, str) and ent.startswith("__ERR__"):
                 return f" تعذّر: {ent[7:]}"
             if hasattr(ent, "id"):
@@ -3023,7 +3023,12 @@ async def _(event):
         if not answer:
             return await m.edit("- لم أحصل على رد، حاول مرة أخرى")
         results = []
-        for call in _ai_parse_tool_calls(answer):
+        calls = _ai_parse_tool_calls(answer)
+        if not calls:
+            direct = await _ai_execute_action(arg, event)
+            if direct:
+                results.append(f"[تنفيذ مباشر] {direct}")
+        for call in calls:
             res = await _ai_run_tool(call)
             results.append(f"[{call.get('name')}] {res}")
         ai_mem_add("chat_owner", "user", arg)
