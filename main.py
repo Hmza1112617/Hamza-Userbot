@@ -2113,9 +2113,28 @@ async def _ai_coerce_params(fn, params):
     return out
 
 
+_AI_TOOL_ALIASES = {
+    "كشف": "get_user", "معلومات": "get_user", "من_هذا": "get_user", "ابحث": "resolve_username",
+    "ارسل": "send_message", "ابعت": "send_message", "رسالة": "send_message",
+    "حظر": "block_user", "بان": "block_user", "امنع": "block_user",
+    "الغاء_حظر": "unblock_user", "فك_حظر": "unblock_user",
+    "طرد": "kick_user", "اطرد": "kick_user",
+    "محادثاتي": "list_dialogs", "دردشات": "list_dialogs", "قوائمي": "list_dialogs",
+    "اقرا": "read_messages", "قراءة": "read_messages", "اقرأ": "read_messages",
+    "امسح": "delete_messages", "مسح": "delete_messages",
+    "انشئ": "create_group", "انشاء_مجموعة": "create_group",
+    "انضم": "invite_to_chat", "دعوة": "invite_to_chat",
+    "غير_اسمي": "update_profile", "تغيير_اسم": "update_profile",
+    "مغادرة": "leave_chat", "غادر": "leave_chat",
+    "توجيه": "forward_message", "انقل": "forward_message",
+    "تثبيت": "pin_message", "ثبت": "pin_message",
+}
+
+
 async def _ai_run_tool(call):
     """ينفّذ استدعاء أداة JSON صريح ويرجع النتيجة كنص"""
     name = call.get("name") or call.get("tool")
+    name = _AI_TOOL_ALIASES.get(str(name), name)
     p = call.get("parameters") or call.get("params") or {}
     try:
         if name == "send_message":
@@ -2177,7 +2196,8 @@ async def _ai_run_tool(call):
             me = await client.get_me()
             return f" {get_display_name(me)} | @{me.username or 'لايوجد'} | id {me.id} | هاتف {getattr(me,'phone','غير متاح')} | بريميوم {'نعم' if getattr(me,'premium',False) else 'لا'}"
         if name == "get_user":
-            ent = await _ai_resolve_ent(p["target"])
+            who = p.get("target") or p.get("user") or p.get("username") or p.get("id")
+            ent = await _ai_resolve_ent(who)
             if ent is None:
                 return " تعذّر إيجاد"
             return f" {get_display_name(ent)} | @{getattr(ent,'username',None) or 'لايوجد'} | id {ent.id} | بريميوم {'نعم' if getattr(ent,'premium',False) else 'لا'} | موثّق {'نعم' if getattr(ent,'verified',False) else 'لا'} | بايو: {getattr(ent,'about','') or 'لايوجد'}"
