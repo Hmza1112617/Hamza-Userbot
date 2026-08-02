@@ -1994,6 +1994,23 @@ def _ai_tools_list():
         return []
 
 
+def _ai_functions_catalog():
+    """يولّد كتالوج موجز لأشهر دوال Telethon حسب الوحدات"""
+    try:
+        lines = []
+        for ns_name in ("account", "channels", "contacts", "messages", "users", "photos", "stories", "bots", "payments", "phone"):
+            ns = getattr(functions, ns_name, None)
+            if ns is None:
+                continue
+            fns = [a for a in dir(ns) if a.endswith("Request")]
+            fns = fns[:25]
+            if fns:
+                lines.append(f"- {ns_name}: " + ", ".join(fns))
+        return "\n".join(lines)
+    except Exception:
+        return "account, channels, contacts, messages, users, photos, bots, payments"
+
+
 async def _ai_resolve_ent(target):
     if target is None:
         return None
@@ -2085,17 +2102,40 @@ async def _ai_run_any_tool(name, p):
                 ns = None
             if ns:
                 break
-            fn = _find_any_method(candidate, method)
-            if fn:
-                return await _ai_run_direct(fn, params)
-    if ns is None:
+    if ns is None and ns_name:
         return f" لا توجد وحدة للدالة {method}"
+    if ns is None:
+        fn = _find_function_global(method)
+        if fn:
+            return await _ai_run_direct(fn, params)
+        return f" لا توجد دالة {method} في أي وحدة"
     fn = getattr(ns, method, None)
     if fn is None:
         fn = _find_any_method(ns, method)
     if fn is None:
         return f" لا توجد دالة {method}"
     return await _ai_run_direct(fn, params)
+
+
+def _find_function_global(method):
+    """يبحث عن دالة في كل وحدات functions ثم types"""
+    for candidate in (functions, types):
+        for sub in dir(candidate):
+            if sub.startswith("_") or sub.startswith("TL"):
+                continue
+            try:
+                ns = getattr(candidate, sub, None)
+            except Exception:
+                continue
+            if ns is None or not hasattr(ns, method):
+                continue
+            fn = getattr(ns, method, None)
+            if callable(fn):
+                return fn
+            fn2 = _find_any_method(ns, method)
+            if fn2:
+                return fn2
+    return None
 
 
 def _find_any_method(ns, method):
@@ -2967,13 +3007,18 @@ async def ai_ask(question, event=None, owner_chat=False, with_tools=False):
     if with_tools:
         tools = _ai_tools_list()
         tools_txt = json.dumps(tools, ensure_ascii=False, indent=1)
+        catalog = _ai_functions_catalog()
         parts.append(
-            "[أدوات Telethon المتاحة لك — نفّذ أي منها عبر إرجاع كتلة JSON صريحة]\n"
-            "القاعدة: إذا طلب المالك إجراءً على حسابه، أعد استدعاءً واحداً على الأقل بصيغة:\n"
-            "```json\n{\"name\": \"<اسم الأداة>\", \"parameters\": { ... }}\n```\n"
-            "يمكنك إرجاع عدة أدوات. أداة raw_tl تتيح لك تنفيذ أي استدعاء Telethon خام بلا قيود.\n"
-            "بعد تنفيذ الأدوات سيُعاد لك الرد بنتيجة كل أداة لتشرحها وتصحّح إن لزم.\n"
-            f"قائمة الأدوات:\n{tools_txt}"
+            "[قدرة تنفيذ Telethon — لديك صلاحية تنفيذ أي دالة على حساب المالك بلا قيود]\n"
+            "لتشغيل أي إجراء اكتب كتلة JSON بصيغة:\n"
+            "```json\n{\"name\": \"<اسم_الوحدة>.اسم_الدالة\", \"parameters\": { ... }}\n```\n"
+            "مثال: {\"name\": \"channels.GetFullChannelRequest\", \"parameters\": {\"channel\": \"@username\"}}\n"
+            "أو استخدم الأسماء العربية: {\"name\": \"كشف\", \"parameters\": {\"user\": 123}}\n"
+            "يمكنك إرجاع عدة استدعاءات دفعة واحدة، وتجربة أكثر من دالة حتى تنجز المطلوب.\n"
+            "لا تشرح ما ستفعله فقط — نفّذ فعلياً ثم اشرح النتيجة بلا أكواد.\n"
+            "أشهر الوحدات المتاحة:\n"
+            f"{catalog}\n"
+            f"قائمة أدوات سريعة إضافية:\n{tools_txt}"
         )
     parts.append(f"[رسالة المستخدم الحالية]\n{question}")
     full = "\n\n".join(parts)
