@@ -2099,13 +2099,44 @@ async def _ai_run_any_tool(name, p):
 
 
 def _find_any_method(ns, method):
+    """يبحث عن دالة بعدة محاولات: المطابقة التامة، إضافة Request، اختلافات الحالة، تشابه الأسماء"""
     if not method:
         return None
-    for attr in dir(ns):
-        if attr == method or attr.endswith(method) or method.endswith(attr):
+    candidates = [
+        method,
+        method + "Request",
+        method.replace("Request", ""),
+        method[0].lower() + method[1:],
+        method[0].upper() + method[1:],
+        method[0].upper() + method[1:] + "Request",
+        "Get" + method, "Get" + method + "Request",
+        "Send" + method, "Send" + method + "Request",
+        "Edit" + method, "Edit" + method + "Request",
+        "Create" + method, "Create" + method + "Request",
+        "Delete" + method, "Delete" + method + "Request",
+        "Update" + method, "Update" + method + "Request",
+    ]
+    all_attrs = [a for a in dir(ns)]
+    for c in candidates:
+        obj = getattr(ns, c, None)
+        if callable(obj):
+            return obj
+    method_l = method.lower()
+    for attr in all_attrs:
+        al = attr.lower()
+        if al == method_l or al.endswith(method_l) or al.replace("request", "") == method_l:
             obj = getattr(ns, attr, None)
             if callable(obj):
                 return obj
+    try:
+        from difflib import get_close_matches
+        names = [a for a in all_attrs if a.endswith("Request")]
+        best = get_close_matches(method, [a.replace("Request", "") for a in names], n=1, cutoff=0.5)
+        if best:
+            idx = [a.replace("Request", "") for a in names].index(best[0])
+            return getattr(ns, names[idx], None)
+    except Exception:
+        pass
     return None
 
 
@@ -2161,11 +2192,13 @@ async def _ai_run_raw_tl(p):
             return f" لا توجد وحدة للدالة {method}"
         fn = getattr(ns, method, None)
         if fn is None:
+            fn = _find_any_method(ns, method)
+        if fn is None:
             return f" لا توجد دالة {method} في {ns_name or guess}"
 
         params = await _ai_coerce_params(fn, params)
         res = await client(fn(**params))
-        return f" نتيجة {method}:\n{str(res)[:3000]}"
+        return f" نتيجة {getattr(fn, '__name__', method)}:\n{str(res)[:3000]}"
     except Exception as e:
         return f" خطأ تنفيذ raw_tl: {e}"
 
@@ -3022,29 +3055,42 @@ async def _(event):
         answer = await ai_ask(arg, event, owner_chat=True, with_tools=with_tools)
         if not answer:
             return await m.edit("- لم أحصل على رد، حاول مرة أخرى")
-        results = []
-        calls = _ai_parse_tool_calls(answer)
-        if not calls:
-            direct = await _ai_execute_action(arg, event)
-            if direct:
-                results.append(f"[تنفيذ مباشر] {direct}")
-        for call in calls:
-            res = await _ai_run_tool(call)
-            results.append(f"[{call.get('name')}] {res}")
         ai_mem_add("chat_owner", "user", arg)
         ai_mem_add("chat_owner", "assistant", answer)
-        out = answer
-        if results:
-            out += "\n\n **نتائج التنفيذ:**\n" + "\n".join(results)
-            follow = await ai_ask(
-                "[نتيجة تنفيذ أدواتك]:\n" + "\n".join(results) +
-                "\nاشرح للمالك ما تم، وإن احتجت تصحيحاً اقترح أداة أخرى.",
-                event, owner_chat=True, with_tools=with_tools)
-            if follow:
-                out += "\n\n " + follow
+        final_reply = None
+        current = answer
+        for round_no in range(4):
+            calls = _ai_parse_tool_calls(current)
+            if calls:
+                results = []
+                for call in calls:
+                    res = await _ai_run_tool(call)
+                    results.append(f"[{call.get('name')}] {res}")
+                follow = await ai_ask(
+                    "[نتائج تنفيذ أدواتك — راجعها وحدد إن كنت تحتاج محاولة أخرى أو تنفيذ المزيد]:\n"
+                    + "\n".join(results) +
+                    "\nإن اكتمل المطلوب اشرح للمالك النتيجة بوضوح بلا أكواد. وإن فشل شيء جرّب اسماً آخر أو دالة أقرب.",
+                    event, owner_chat=True, with_tools=with_tools)
+                if not follow:
+                    final_reply = current
+                    break
                 ai_mem_add("chat_owner", "assistant", follow)
-        out += "\n\n__محادثة مستمرة — اكتب .ذكاء للمتابعة/التصحيح__"
-        await edit_or_reply(m, out)
+                if not _ai_parse_tool_calls(follow):
+                    final_reply = follow
+                    break
+                current = follow
+                continue
+            direct = await _ai_execute_action(arg, event)
+            if direct:
+                final_reply = f"{current}\n\n{direct}"
+            else:
+                final_reply = current
+            break
+        if not final_reply:
+            final_reply = current
+        final_reply = re.sub(r"```json.*?```", "", final_reply, flags=re.DOTALL).strip()
+        final_reply += "\n\n__محادثة مستمرة — اكتب .ذكاء للمتابعة/التصحيح__"
+        await edit_or_reply(m, final_reply)
     except Exception as e:
         await edit_or_reply(m, f"- خطأ بالذكاء: `{e}`")
 
