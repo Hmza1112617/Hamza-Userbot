@@ -1998,23 +1998,57 @@ async def _ai_resolve_ent(target):
     if target is None:
         return None
     target = str(target).strip().lstrip("@")
+    if target.lstrip("-").isdigit() or target.startswith("+"):
+        try:
+            if target.startswith("+") or (target.isdigit() and 7 <= len(target) <= 15):
+                phone = target if target.startswith("+") else "+" + target.lstrip("+")
+                imp = await client(functions.contacts.ImportContactsRequest(
+                    contacts=[types.InputPhoneContact(client_id=0, phone=phone, first_name="x", last_name="")]))
+                if imp.users:
+                    return imp.users[0]
+        except Exception:
+            pass
+        uid = int(target.lstrip("+"))
+        try:
+            return await client.get_entity(uid)
+        except Exception:
+            pass
+        ent = await _ai_find_by_id(uid)
+        if ent:
+            return ent
+        return None
     try:
-        if target.lstrip("-").isdigit() or target.startswith("+"):
-            phone = target if target.startswith("+") else "+" + target.lstrip("+")
-            imp = await client(functions.contacts.ImportContactsRequest(
-                contacts=[types.InputPhoneContact(client_id=0, phone=phone, first_name="x", last_name="")]))
-            if imp.users:
-                return imp.users[0]
-            if target.lstrip("+").isdigit() and not target.startswith("+"):
-                return await client.get_entity(int(target))
-            return None
         return await client.get_entity(target)
     except Exception:
-        try:
-            res = await client(functions.contacts.ResolveUsernameRequest(target.replace("@", "")))
-            return res.users[0] if getattr(res, "users", None) else (res.chats[0] if getattr(res, "chats", None) else None)
-        except Exception:
-            return None
+        pass
+    try:
+        res = await client(functions.contacts.ResolveUsernameRequest(target.replace("@", "")))
+        return res.users[0] if getattr(res, "users", None) else (res.chats[0] if getattr(res, "chats", None) else None)
+    except Exception:
+        return None
+
+
+async def _ai_find_by_id(uid):
+    """يبحث عن مستخدم في الرسائل الحديثة والجهات لمن لم يُخزّن access_hash"""
+    try:
+        async for d in client.iter_dialogs(limit=80):
+            try:
+                if d.entity and getattr(d.entity, "id", None) == uid:
+                    return d.entity
+            except Exception:
+                pass
+        async for d in client.iter_dialogs(limit=30):
+            try:
+                async for msg in client.iter_messages(d.id, limit=50):
+                    if msg.sender_id == uid:
+                        sender = await msg.get_sender()
+                        if sender:
+                            return sender
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return None
 
 
 async def _ai_run_any_tool(name, p):
@@ -2984,35 +3018,28 @@ async def _(event):
         return await edit_delete(event, f"- اكتب: {PREFIX}ذكاء <سؤالك>", 8)
     m = await event.edit(" جاري التفكير...")
     try:
-        if db_get("settings", "ai_full", False):
-            answer = await ai_ask(arg, event, owner_chat=True, with_tools=True)
-            if not answer:
-                return await m.edit("- لم أحصل على رد، حاول مرة أخرى")
-            results = []
-            for call in _ai_parse_tool_calls(answer):
-                res = await _ai_run_tool(call)
-                results.append(f"[{call.get('name')}] {res}")
-            ai_mem_add("chat_owner", "user", arg)
-            ai_mem_add("chat_owner", "assistant", answer)
-            out = answer
-            if results:
-                out += "\n\n **نتائج التنفيذ:**\n" + "\n".join(results)
-                follow = await ai_ask(
-                    "[نتيجة تنفيذ أدواتك]:\n" + "\n".join(results) +
-                    "\nاشرح للمالك ما تم، وإن احتجت تصحيحاً اقترح أداة أخرى.",
-                    event, owner_chat=True, with_tools=True)
-                if follow:
-                    out += "\n\n " + follow
-                    ai_mem_add("chat_owner", "assistant", follow)
-            out += "\n\n__محادثة مستمرة — اكتب .ذكاء للمتابعة/التصحيح__"
-            await edit_or_reply(m, out)
-            return
-        answer = await ai_ask(arg, event, owner_chat=True)
+        with_tools = True
+        answer = await ai_ask(arg, event, owner_chat=True, with_tools=with_tools)
         if not answer:
-            return await edit_or_reply(m, "- لم أحصل على رد، حاول مرة أخرى")
+            return await m.edit("- لم أحصل على رد، حاول مرة أخرى")
+        results = []
+        for call in _ai_parse_tool_calls(answer):
+            res = await _ai_run_tool(call)
+            results.append(f"[{call.get('name')}] {res}")
         ai_mem_add("chat_owner", "user", arg)
         ai_mem_add("chat_owner", "assistant", answer)
-        await edit_or_reply(m, answer + "\n\n__محادثة مستمرة — اكتب .ذكاء للمتابعة/التصحيح__")
+        out = answer
+        if results:
+            out += "\n\n **نتائج التنفيذ:**\n" + "\n".join(results)
+            follow = await ai_ask(
+                "[نتيجة تنفيذ أدواتك]:\n" + "\n".join(results) +
+                "\nاشرح للمالك ما تم، وإن احتجت تصحيحاً اقترح أداة أخرى.",
+                event, owner_chat=True, with_tools=with_tools)
+            if follow:
+                out += "\n\n " + follow
+                ai_mem_add("chat_owner", "assistant", follow)
+        out += "\n\n__محادثة مستمرة — اكتب .ذكاء للمتابعة/التصحيح__"
+        await edit_or_reply(m, out)
     except Exception as e:
         await edit_or_reply(m, f"- خطأ بالذكاء: `{e}`")
 
