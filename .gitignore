@@ -4,6 +4,7 @@ data/settings.json
 data/replies.json
 data/warns.json
 data/pm_counts.json
+data/mutes.json
 bot.log
 data/source_info.txt
 data/report_cfg.json

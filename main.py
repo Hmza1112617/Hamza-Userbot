@@ -397,15 +397,14 @@ MENU_MAIN = f"""**[ سورس حمزة ]**
 `{PREFIX}م16` | أوامر التحديثات
 `{PREFIX}م17` | فحص و بلاغات (باند و شد)
 `{PREFIX}م18` | الاسم الوقتي (وقت حي بجانب اسمك)
-`{PREFIX}م19` | محوّل الصوت (تغيير الصوت بمؤثرات)"""
+`{PREFIX}م19` | محوّل الصوت (تغيير الصوت بمؤثرات)
+`{PREFIX}م20` | الكتم (حذف رسائل المكتومين)"""
 
 MENU = {
     "م1": """**| أوامر الإدارة :**
 
 `{p}حظر` | بالرد أو المعرف لحظر شخص
 `{p}الغاء حظر` | لفك حظر شخص
-`{p}كتم` | لكتم شخص
-`{p}الغاء كتم` | لفك كتم شخص
 `{p}طرد` | لطرد شخص من المجموعة
 `{p}رفع مشرف` <لقب> | لرفع شخص مشرف
 `{p}تنزيل مشرف` | لتنزيل مشرف
@@ -553,6 +552,13 @@ MENU = {
 `{p}صوتي سجل` | التسجيل في خادم الصوت لأول مرة
 
 **التأثيرات:** سنجاب، عميق، روبوت، صدى، عكسي، همس، مكبر، هاتف، كهف، فضائي، هيليوم، شيطان، راديو، تحت الماء، وحش، 8-بت، فنطاز، بطيء، سريع، تأتأة، مكتوم، جوقة، سكران، تريمولو""",
+
+    "م20": """**| الكتم (حذف رسائل المكتومين):**
+
+`{p}كتم` | بالرد أو المعرف لكتم شخص (تُحذف رسائله تلقائياً)
+`{p}الغاء كتم` | بالرد أو المعرف لفك كتم شخص
+`{p}المكتومين` | لعرض قائمة المكتومين في هذه المجموعة
+`{p}مسح كل المكتومين` | لفك كتم جميع المكتومين""",
 }
 
 
@@ -611,16 +617,30 @@ async def _(event):
     await edit_or_reply(event, f"تم فك حظر {mention(user)} ✓")
 
 
+def _mutes_read():
+    return db_read("mutes", {})
+
+
+def _mutes_write(data):
+    db_write("mutes", data)
+
+
+def _muted_ids(chat_id):
+    return set(_mutes_read().get(str(chat_id), []))
+
+
 @cmd(r"كتم(?:\s|$)([\s\S]*)", groups_only=True)
 async def _(event):
     user, uid = await get_target_user(event)
     if not uid:
         return await edit_delete(event, "- رد على شخص أو ضع معرفه", 8)
-    try:
-        await event.client(EditBannedRequest(event.chat_id, uid, MUTE_RIGHTS))
-    except Exception as e:
-        return await edit_delete(event, f"- تعذر الكتم: `{e}`", 8)
-    await edit_or_reply(event, f"تم كتم {mention(user)} ✓")
+    data = _mutes_read()
+    key = str(event.chat_id)
+    ids = set(data.get(key, []))
+    ids.add(uid)
+    data[key] = list(ids)
+    _mutes_write(data)
+    await edit_or_reply(event, f"تم كتم {mention(user)} — ستُحذف رسائله تلقائياً ✓")
 
 
 @cmd(r"الغاء كتم(?:\s|$)([\s\S]*)", groups_only=True)
@@ -628,11 +648,51 @@ async def _(event):
     user, uid = await get_target_user(event)
     if not uid:
         return await edit_delete(event, "- رد على شخص أو ضع معرفه", 8)
-    try:
-        await event.client(EditBannedRequest(event.chat_id, uid, UNMUTE_RIGHTS))
-    except Exception as e:
-        return await edit_delete(event, f"- تعذر فك الكتم: `{e}`", 8)
-    await edit_or_reply(event, f"تم فك كتم {mention(user)} ✓")
+    data = _mutes_read()
+    key = str(event.chat_id)
+    ids = set(data.get(key, []))
+    if uid in ids:
+        ids.discard(uid)
+        data[key] = list(ids)
+        _mutes_write(data)
+        await edit_or_reply(event, f"تم فك كتم {mention(user)} ✓")
+    else:
+        await edit_delete(event, "- هذا الشخص ليس مكتوماً", 8)
+
+
+@cmd(r"المكتومين$", groups_only=True)
+async def _(event):
+    ids = _muted_ids(event.chat_id)
+    if not ids:
+        return await edit_or_reply(event, "- لا يوجد مكتومون في هذه المجموعة")
+    lines = []
+    for uid in ids:
+        try:
+            u = await event.client.get_entity(uid)
+            name = get_display_name(u)
+        except Exception:
+            name = f"id {uid}"
+        lines.append(f"• {name} — `{uid}`")
+    await edit_or_reply(event, "**| المكتومون (تُحذف رسائلهم):**\n\n" + "\n".join(lines))
+
+
+@cmd(r"مسح كل المكتومين$", groups_only=True)
+async def _(event):
+    data = _mutes_read()
+    data.pop(str(event.chat_id), None)
+    _mutes_write(data)
+    await edit_or_reply(event, "تم فك كتم كل المكتومين في هذه المجموعة ✓")
+
+
+@client.on(events.NewMessage(incoming=True))
+async def _mutes_watcher(event):
+    if not event.is_group or not event.sender_id:
+        return
+    if event.sender_id in _muted_ids(event.chat_id):
+        try:
+            await event.delete()
+        except Exception:
+            pass
 
 
 @cmd(r"طرد(?:\s|$)([\s\S]*)", groups_only=True)
