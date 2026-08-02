@@ -2381,6 +2381,13 @@ async def _ai_run_tool(call):
             return " تم التوجيه"
         if name == "raw_tl":
             return await _ai_run_raw_tl(p)
+        if name == "my_channels":
+            return await _ai_execute_action("قنواتي", event=None)
+        if name == "count_dialogs":
+            n = 0
+            async for _ in client.iter_dialogs():
+                n += 1
+            return f" عدد محادثاتك: {n}"
         return await _ai_run_any_tool(name, p)
     except Exception as e:
         return f" خطأ تنفيذ {name}: {e}"
@@ -2813,6 +2820,58 @@ async def _ai_execute_action(instruction, event):
                         f"موثّق: {'نعم' if getattr(ent,'verified',False) else 'لا'}\nالبايو: {getattr(ent,'about','لايوجد') or 'لايوجد'}")
             return f"ℹ {ent}"
 
+        if _re.search(r"قنواتي|المشرف\s+بها|اديرها|مالك\s+او\s+مشرف|املكها|قنوات\s+التي|مجموعاتي", ins):
+            me = await client.get_me()
+            owned = []
+            admin = []
+            try:
+                async for d in client.iter_dialogs(limit=200):
+                    ent = d.entity
+                    if not (getattr(ent, "megagroup", False) or getattr(ent, "broadcast", False)):
+                        continue
+                    title = getattr(ent, "title", "بدون اسم")
+                    try:
+                        full = await client(functions.channels.GetFullChannelRequest(ent))
+                        participant = full.full_chat.participants
+                        if getattr(participant, "admin", False):
+                            admin.append(title)
+                        elif getattr(participant, "admin_rights", None):
+                            admin.append(title)
+                        else:
+                            admins = [p.user_id for p in getattr(full.full_chat, "admins", None) or []]
+                            if me.id in admins:
+                                admin.append(title)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            if not owned and not admin:
+                return " لا توجد قنوات/مجموعات تملكها أو تديرها (أو تعذّر الفحص)."
+            parts = []
+            if owned:
+                parts.append("المالك:\n" + "\n".join(f"- {t}" for t in owned[:50]))
+            if admin:
+                parts.append("مشرف:\n" + "\n".join(f"- {t}" for t in admin[:50]))
+            return "\n\n".join(parts)
+
+        if _re.search(r"عدد\s+المحادثات|كم\s+محادثة|عدد\s+الدردشات", ins):
+            n = 0
+            async for _ in client.iter_dialogs():
+                n += 1
+            return f" عدد محادثاتك: {n}"
+
+        if _re.search(r"بحث\s+في\s+المحادثات|دور\s+على\s+(.+)|ابحث\s+لي\s+على\s+(.+)", ins):
+            q = None
+            mq = _re.search(r"بحث\s+في\s+المحادثات\s+(.+)", ins) or _re.search(r"دور\s+على\s+(.+)", ins) or _re.search(r"ابحث\s+لي\s+على\s+(.+)", ins)
+            if mq:
+                q = mq.group(1).strip()
+            if q:
+                found = []
+                async for d in client.iter_dialogs(limit=200):
+                    if q in (d.name or ""):
+                        found.append(f"- {d.name} ({d.id})")
+                return " المحادثات المطابقة:\n" + "\n".join(found[:50]) if found else " لا توجد نتائج."
+
         return None
     except Exception as e:
         return f" خطأ بالتنفيذ: {e}"
@@ -3081,6 +3140,8 @@ async def _(event):
                 current = follow
                 continue
             direct = await _ai_execute_action(arg, event)
+            if not direct:
+                direct = await _ai_execute_action(current, event)
             if direct:
                 final_reply = f"{current}\n\n{direct}"
             else:
