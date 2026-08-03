@@ -200,9 +200,15 @@ client = TelegramClient(
     StringSession(CONFIG["STRING_SESSION"]),
     CONFIG["API_ID"],
     CONFIG["API_HASH"],
-    app_version="حمزة 1.0",
+    device_model="Hamza Userbot",
+    system_version="Android 12",
+    app_version="Hamza 2.3",
+    lang_code="ar",
+    system_lang_code="ar",
     auto_reconnect=True,
-    connection_retries=None,
+    connection_retries=10,
+    retry_delay=2,
+    flood_sleep_threshold=60,
 )
 
 START_TIME = time.time()
@@ -4290,8 +4296,43 @@ async def _startup():
         db_write("settings", s)
 
 
+def _acquire_single_lock():
+    """يمنع تشغيل نسختين بنفس السيشن في نفس الوقت (سبب wrong session ID)"""
+    import socket as _socket
+    lock_path = os.path.join(DATA_DIR, "hamza.lock")
+    alive = False
+    if os.path.exists(lock_path):
+        try:
+            s = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+            s.connect(lock_path)
+            s.close()
+            alive = True
+        except Exception:
+            alive = False
+            try:
+                os.remove(lock_path)
+            except Exception:
+                pass
+    if alive:
+        print("=" * 45)
+        print("  السورس يعمل بالفعل في جلسة أخرى!")
+        print("  أغلق النسخة القديمة قبل تشغيل هذه.")
+        print("  (سبب خطأ wrong session ID هو تشغيل نسختين بنفس السيشن)")
+        print("=" * 45)
+        sys.exit(1)
+    try:
+        sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+        sock.bind(lock_path)
+        sock.listen(1)
+        return sock
+    except OSError:
+        print("تعذّر إنشاء قفل التشغيل")
+        sys.exit(1)
+
+
 def main():
     global client
+    lock_sock = _acquire_single_lock()
     new_login = not CONFIG["STRING_SESSION"]
     phone = ""
     if new_login:
@@ -4355,8 +4396,25 @@ def main():
             print("=" * 45)
         except Exception:
             pass
-    client.loop.run_until_complete(_startup())
-    client.run_until_disconnected()
+    try:
+        client.loop.run_until_complete(_startup())
+        while True:
+            try:
+                client.run_until_disconnected()
+                break
+            except Exception as e:
+                print(f"انقطع الاتصال: {e}")
+                print("إعادة الاتصال خلال 5 ثوان...")
+                time.sleep(5)
+                try:
+                    client.loop.run_until_complete(client.connect())
+                except Exception as e2:
+                    print(f"فشل إعادة الاتصال: {e2}")
+    finally:
+        try:
+            os.remove(os.path.join(DATA_DIR, "hamza.lock"))
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
