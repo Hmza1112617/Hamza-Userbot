@@ -479,7 +479,7 @@ MENU = {
 {b}`{cmd}نيكه`{e} — سبام سب مولّد بالرد يستهدف
 {b}`{cmd}خلاص`{e} — إيقاف السبام
 {b}`{cmd}سرعه`{e} — ضبط سرعة الإرسال
-{b}`{cmd}تتبع`{e} — رد تلقائي بالسب على أي رسالة خاصة
+{b}`{cmd}تتبع`{e} — رد تلقائي على رسائل شخص في الخاص أو المجموعات
 {b}`{cmd}كافي`{e} — إيقاف الرد التلقائي
 {b}`{cmd}معاينة سب`{e} — عرض عينات من المولّد
 {b}`{cmd}عدد السب`{e} — عرض عدد التركيبات الممكنة
@@ -1795,12 +1795,13 @@ async def _(event):
 
 @client.on(events.NewMessage(incoming=True))
 async def _auto_follow(event):
-    if not follow_running or not event.is_private:
+    if not follow_running:
         return
     target_id = db_get("settings", "follow_target")
     if not target_id or event.sender_id != target_id:
         return
     db_set("settings", "follow_last_msg", event.id)
+    db_set("settings", "follow_chat", event.chat_id)
     word = generate_insult()
     try:
         async with client.action(event.chat_id, "typing"):
@@ -4243,16 +4244,23 @@ async def _(event):
 
 async def _follow_checker_loop():
     """يتحقق دورياً من وجود رسائل من الهدف، ويبحث عن أخرى إذا حُذفت"""
+    me_id = None
+    try:
+        me = await client.get_me()
+        me_id = me.id
+    except Exception:
+        pass
     while follow_running:
         try:
             target_id = db_get("settings", "follow_target")
             last_msg_id = db_get("settings", "follow_last_msg", 0)
+            chat_id = db_get("settings", "follow_chat")
             if not target_id:
                 await asyncio.sleep(30)
                 continue
-            if last_msg_id:
+            if last_msg_id and chat_id:
                 try:
-                    msg = await client.get_messages(entity=target_id, ids=last_msg_id)
+                    msg = await client.get_messages(entity=chat_id, ids=last_msg_id)
                     if msg and not msg.deleted:
                         await asyncio.sleep(20)
                         continue
@@ -4262,9 +4270,10 @@ async def _follow_checker_loop():
                 if not msg or msg.deleted:
                     continue
                 last_sender = getattr(msg, "sender_id", None)
-                if last_sender == (await client.get_me()).id:
+                if last_sender == me_id:
                     continue
                 db_set("settings", "follow_last_msg", msg.id)
+                db_set("settings", "follow_chat", msg.chat_id)
                 word = generate_insult()
                 try:
                     await msg.reply(word)
