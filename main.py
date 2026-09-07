@@ -1774,15 +1774,19 @@ async def _(event):
         else:
             return await edit_delete(event, f"- رد على رسالة الشخص أو اكتب: {PREFIX}تتبع <يوزر>", 8)
     db_set("settings", "follow_target", target_id)
+    db_set("settings", "follow_chat", event.chat_id)
     db_set("settings", "follow_running", True)
     db_set("settings", "follow_last_msg", 0)
     follow_running = True
+    asyncio.ensure_future(_follow_loop())
     try:
         user = await event.client.get_entity(target_id)
         name = get_display_name(user)
     except Exception:
         name = str(target_id)
-    await edit_or_reply(event, f"تم تفعيل التتبع على: {name} — `{target_id}` ✓\nسترد تلقائياً على رسائله في الخاص")
+    import random as _rnd
+    spd = _rnd.uniform(spam_delay_min, spam_delay_max) if spam_delay_min != spam_delay_max else spam_delay_min
+    await edit_or_reply(event, f"تم تفعيل التتبع على: {name} — `{target_id}` ✓\nسرعة الإرسال: {spd:.1f}ث\nسترد تلقائياً على رسائله في الخاص والمجموعات")
 
 
 @cmd(r"كافي$")
@@ -1815,6 +1819,54 @@ async def _auto_follow(event):
         await event.reply(word)
     except Exception:
         pass
+
+
+async def _follow_loop():
+    """حلقة تتبع مستمرة — ترسل ردود بشكل دوري على المستهدف حسب السرعة المحددة"""
+    me_id = None
+    try:
+        me = await client.get_me()
+        me_id = me.id
+    except Exception:
+        pass
+    while follow_running:
+        try:
+            target_id = db_get("settings", "follow_target")
+            chat_id = db_get("settings", "follow_chat")
+            last_msg_id = db_get("settings", "follow_last_msg", 0)
+            if not target_id or not chat_id:
+                await asyncio.sleep(30)
+                continue
+            target_id = int(target_id)
+            if last_msg_id:
+                try:
+                    msg = await client.get_messages(entity=chat_id, ids=last_msg_id)
+                    if msg and not msg.deleted:
+                        pass
+                    else:
+                        async for msg in client.iter_messages(target_id, limit=1):
+                            if msg and not msg.deleted:
+                                sender = getattr(msg, "sender_id", None)
+                                if sender and int(sender) != me_id:
+                                    last_msg_id = msg.id
+                                    chat_id = msg.chat_id
+                                    db_set("settings", "follow_last_msg", msg.id)
+                                    db_set("settings", "follow_chat", msg.chat_id)
+                                break
+                except Exception:
+                    pass
+            word = generate_insult()
+            try:
+                if flood_guard_enabled and flood_guard:
+                    await flood_guard.wait_if_needed()
+                await client.send_message(target_id, word)
+            except Exception:
+                pass
+        except Exception:
+            pass
+        import random as _rnd
+        spd = _rnd.uniform(spam_delay_min, spam_delay_max) if spam_delay_min != spam_delay_max else spam_delay_min
+        await asyncio.sleep(max(spd, 1.0))
 
 
 @cmd(r"حماية الفلود$")
@@ -4316,7 +4368,7 @@ async def _resume_persistent_tasks():
 
     if db_get("settings", "follow_running", False):
         follow_running = True
-        asyncio.ensure_future(_follow_checker_loop())
+        asyncio.ensure_future(_follow_loop())
         print("  ↻ تم استئناف التتبع")
 
     try:
