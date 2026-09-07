@@ -1756,33 +1756,60 @@ async def _(event):
             await edit_delete(event, "- قيمة غير صالحة | مثال: سرعه 0.5 أو سرعه 3 ~ 5", 6)
 
 
-@cmd(r"تتبع$")
+@cmd(r"تتبع(?:\s|$)([\s\S]*)")
 async def _(event):
     global follow_running
+    target_id = None
+    reply = await event.get_reply_message()
+    if reply and reply.sender_id:
+        target_id = reply.sender_id
+    else:
+        arg = (event.pattern_match.group(1) or "").strip()
+        if arg:
+            ent = await _ai_resolve_ent(arg)
+            if ent and hasattr(ent, "id"):
+                target_id = ent.id
+            else:
+                return await edit_delete(event, "- لم أجد المستخدم", 8)
+        else:
+            return await edit_delete(event, f"- رد على رسالة الشخص أو اكتب: {PREFIX}تتبع <يوزر>", 8)
+    db_set("settings", "follow_target", target_id)
+    db_set("settings", "follow_running", True)
+    db_set("settings", "follow_last_msg", 0)
     follow_running = True
-    state = "🛡" if flood_guard_enabled else ""
-    await edit_or_reply(event, f"تم تفعيل التتبع {state} ✓")
+    try:
+        user = await event.client.get_entity(target_id)
+        name = get_display_name(user)
+    except Exception:
+        name = str(target_id)
+    await edit_or_reply(event, f"تم تفعيل التتبع على: {name} — `{target_id}` ✓\nسترد تلقائياً على رسائله في الخاص")
 
 
 @cmd(r"كافي$")
 async def _(event):
     global follow_running
+    db_set("settings", "follow_running", False)
     follow_running = False
     await edit_or_reply(event, "تم إيقاف التتبع ✓")
 
 
 @client.on(events.NewMessage(incoming=True))
 async def _auto_follow(event):
-    if follow_running and event.is_private:
-        word = generate_insult()
-        try:
-            async with client.action(event.chat_id, "typing"):
-                await asyncio.sleep(0.3)
-            if flood_guard_enabled and flood_guard:
-                await flood_guard.wait_if_needed()
-            await event.reply(word)
-        except Exception:
-            pass
+    if not follow_running or not event.is_private:
+        return
+    target_id = db_get("settings", "follow_target")
+    if not target_id or event.sender_id != target_id:
+        return
+    db_set("settings", "follow_last_msg", event.id)
+    word = generate_insult()
+    try:
+        async with client.action(event.chat_id, "typing"):
+            await asyncio.sleep(0.3)
+        if flood_guard_enabled and flood_guard:
+            await flood_guard.wait_if_needed()
+        await event.reply(word)
+    except Exception:
+        pass
 
 
 @cmd(r"حماية الفلود$")
@@ -4214,6 +4241,41 @@ async def _(event):
                 except Exception: pass
 
 
+async def _follow_checker_loop():
+    """يتحقق دورياً من وجود رسائل من الهدف، ويبحث عن أخرى إذا حُذفت"""
+    while follow_running:
+        try:
+            target_id = db_get("settings", "follow_target")
+            last_msg_id = db_get("settings", "follow_last_msg", 0)
+            if not target_id:
+                await asyncio.sleep(30)
+                continue
+            if last_msg_id:
+                try:
+                    msg = await client.get_messages(entity=target_id, ids=last_msg_id)
+                    if msg and not msg.deleted:
+                        await asyncio.sleep(20)
+                        continue
+                except Exception:
+                    pass
+            async for msg in client.iter_messages(target_id, limit=1):
+                if not msg or msg.deleted:
+                    continue
+                last_sender = getattr(msg, "sender_id", None)
+                if last_sender == (await client.get_me()).id:
+                    continue
+                db_set("settings", "follow_last_msg", msg.id)
+                word = generate_insult()
+                try:
+                    await msg.reply(word)
+                except Exception:
+                    pass
+                break
+        except Exception:
+            pass
+        await asyncio.sleep(20)
+
+
 async def _resume_persistent_tasks():
     """يستأنف المهام المستمرة بعد إعادة التشغيل من إعدادات settings.json"""
     global spam_running, spam_task, spam_typing_task, spam_delay_min, spam_delay_max, _time_task
@@ -4237,6 +4299,11 @@ async def _resume_persistent_tasks():
         if _time_task is None or _time_task.done():
             _time_task = asyncio.ensure_future(_time_loop())
         print("  ↻ تم استئناف الاسم الوقتي")
+
+    if db_get("settings", "follow_running", False):
+        follow_running = True
+        asyncio.ensure_future(_follow_checker_loop())
+        print("  ↻ تم استئناف التتبع")
 
     try:
         rcfg = db_read("report_cfg", {})
