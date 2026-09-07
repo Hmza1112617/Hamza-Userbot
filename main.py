@@ -1795,10 +1795,14 @@ async def _(event):
 
 @client.on(events.NewMessage(incoming=True))
 async def _auto_follow(event):
-    if not follow_running:
+    if not follow_running or event.out:
         return
     target_id = db_get("settings", "follow_target")
-    if not target_id or event.sender_id != target_id:
+    if not target_id:
+        return
+    target_id = int(target_id)
+    sender_id = getattr(event, "sender_id", None)
+    if not sender_id or int(sender_id) != target_id:
         return
     db_set("settings", "follow_last_msg", event.id)
     db_set("settings", "follow_chat", event.chat_id)
@@ -4258,6 +4262,7 @@ async def _follow_checker_loop():
             if not target_id:
                 await asyncio.sleep(30)
                 continue
+            target_id = int(target_id)
             if last_msg_id and chat_id:
                 try:
                     msg = await client.get_messages(entity=chat_id, ids=last_msg_id)
@@ -4270,7 +4275,7 @@ async def _follow_checker_loop():
                 if not msg or msg.deleted:
                     continue
                 last_sender = getattr(msg, "sender_id", None)
-                if last_sender == me_id:
+                if not last_sender or int(last_sender) == me_id:
                     continue
                 db_set("settings", "follow_last_msg", msg.id)
                 db_set("settings", "follow_chat", msg.chat_id)
