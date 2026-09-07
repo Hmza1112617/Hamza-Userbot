@@ -1859,7 +1859,7 @@ async def _follow_loop():
             try:
                 if flood_guard_enabled and flood_guard:
                     await flood_guard.wait_if_needed()
-                await client.send_message(chat_id, word)
+                await client.send_message(chat_id, word, reply_to=last_msg_id)
             except Exception:
                 pass
         except Exception:
