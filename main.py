@@ -3651,11 +3651,30 @@ async def _do_report(peer_entity, reason_name, message, msg_id=None):
         return f"ERR:{e}"
 
 
+def _extract_entity_from_url(url):
+    """يستخرج اسم المستخدم/القناة من رابط تيليجرام (ي处理 روابط الرسائل أيضاً)"""
+    import re
+    m = re.search(r't\.me/(?:s/)?([^/?]+)', url or "")
+    if m:
+        return m.group(1)
+    return url
+
+
+def _extract_msg_id_from_url(url):
+    """يستخرج رقم الرسالة من رابط تيليجرام إن وُجد"""
+    import re
+    m = re.search(r't\.me/(?:s/)?[^/?]+/(\d+)', url or "")
+    if m:
+        return int(m.group(1))
+    return None
+
+
 async def _target_still_alive(target):
     """يتحقق هل الهدف لم يُحظر بعد من تيليجرام (مثل .فحص).
     يرجع (True, entity) إن لم يُحظر، أو (False, رسالة_السبب) إن حُظر/انتهى/مفقود."""
     try:
-        ent = await _ai_resolve_ent(target)
+        resolved = _extract_entity_from_url(target)
+        ent = await _ai_resolve_ent(resolved)
         if ent is None:
             return False, " تعذّر إيجاد الهدف (ممكن محظور أو محذوف)"
         try:
@@ -3772,7 +3791,8 @@ async def _(event):
             db_write("report_cfg", cfg)
             return
         ent = res
-        r = await _do_report(ent, cfg["reason"], cfg["message"])
+        msg_id = _extract_msg_id_from_url(target)
+        r = await _do_report(ent, cfg["reason"], cfg["message"], msg_id=msg_id)
         if r is True:
             sent += 1
             err_count = 0
@@ -4401,7 +4421,8 @@ async def _resume_report_loop(target):
                 pass
             return
         ent = res
-        r = await _do_report(ent, cfg["reason"], cfg["message"])
+        msg_id = _extract_msg_id_from_url(tgt)
+        r = await _do_report(ent, cfg["reason"], cfg["message"], msg_id=msg_id)
         if r is True:
             sent += 1
             err_count = 0
