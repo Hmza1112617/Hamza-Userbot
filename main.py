@@ -1441,7 +1441,8 @@ spam_delay_max = 5.0
 follow_running = False
 forward_running = False
 forward_task = None
-forward_delay = 0.5
+forward_delay_min = 0.5
+forward_delay_max = 0.5
 selected_saved_msgs = []
 flood_guard_enabled = False
 flood_guard = None
@@ -1651,7 +1652,9 @@ async def _forward_loop(chat_id):
                 await client.forward_messages(chat_id, msg)
             except Exception as e:
                 print(f"forward error: {e}")
-            await asyncio.sleep(forward_delay)
+            import random as _rnd
+            spd = _rnd.uniform(forward_delay_min, forward_delay_max) if forward_delay_min != forward_delay_max else forward_delay_min
+            await asyncio.sleep(spd)
 
 
 _INS_KEYS = {
@@ -1972,7 +1975,7 @@ async def _(event):
     forward_running = True
     forward_task = asyncio.ensure_future(_forward_loop(event.chat_id))
     await event.edit(
-        f" تشغيل التحويل من المحفوظات... رسائل: {len(selected_saved_msgs)} | delay: {forward_delay}ث"
+        f" تشغيل التحويل من المحفوظات... رسائل: {len(selected_saved_msgs)} | delay: {forward_delay_min} ~ {forward_delay_max}ث"
     )
 
 
@@ -1987,16 +1990,35 @@ async def _(event):
 
 @cmd(r"ديلاي(?:\s|$)([\s\S]*)")
 async def _(event):
-    global forward_delay
-    arg = event.pattern_match.group(1)
-    try:
-        delay = float(arg.strip())
-        if delay <= 0:
-            return await edit_delete(event, "- الوقت يجب أن يكون أكبر من 0", 6)
-        forward_delay = delay
-        await edit_or_reply(event, f"تم ضبط ديلاي التحويل إلى {delay}ث ✓")
-    except (ValueError, AttributeError):
-        await edit_delete(event, "- قيمة غير صالحة | مثال: ديلاي 0.5", 6)
+    global forward_delay_min, forward_delay_max
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg:
+        await edit_or_reply(event, f"- مثال: `{PREFIX}ديلاي 0.5` أو `{PREFIX}ديلاي 0.3 ~ 1.5`")
+        return
+    if "~" in arg:
+        parts = arg.split("~", 1)
+        try:
+            lo = float(parts[0].strip())
+            hi = float(parts[1].strip())
+            if lo <= 0 or hi <= 0:
+                return await edit_delete(event, "- الوقت يجب أن يكون أكبر من 0", 6)
+            if lo > hi:
+                lo, hi = hi, lo
+            forward_delay_min = lo
+            forward_delay_max = hi
+            await edit_or_reply(event, f"تم ضبط ديلاي التحويل: عشوائي بين {lo} و {hi}ث ✓")
+        except (ValueError, AttributeError):
+            await edit_delete(event, "- صيغة خاطئة | مثال: ديلاي 0.3 ~ 1.5", 6)
+    else:
+        try:
+            delay = float(arg)
+            if delay <= 0:
+                return await edit_delete(event, "- الوقت يجب أن يكون أكبر من 0", 6)
+            forward_delay_min = delay
+            forward_delay_max = delay
+            await edit_or_reply(event, f"تم ضبط ديلاي التحويل إلى {delay}ث ✓")
+        except (ValueError, AttributeError):
+            await edit_delete(event, "- قيمة غير صالحة | مثال: ديلاي 0.5 أو ديلاي 0.3 ~ 1.5", 6)
 
 
 
