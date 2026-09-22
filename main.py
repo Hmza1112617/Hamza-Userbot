@@ -402,6 +402,7 @@ MENU_MAIN = f"""✦ ────『قـائـمـة اوامر سورس حـمـ
 • `{PREFIX}م18` ➪ اوامـر الاسم الوقتي
 • `{PREFIX}م19` ➪ اوامـر محوّل الصوت
 • `{PREFIX}م20` ➪ اوامـر الكتم
+• `{PREFIX}م21` ➪ اوامـر التفليش
 
 ✦ ─────────────────────────── ✦"""
 
@@ -562,6 +563,12 @@ MENU = {
 {b}`{cmd}الغاء كتم`{e} — لفك كتم شخص
 {b}`{cmd}المكتومين`{e} — عرض قائمة المكتومين
 {b}`{cmd}مسح كل المكتومين`{e} — فك كتم الجميع""",
+    "م21": """{header_opa امر التفليش}
+
+{b}`{cmd}تفليش`{e} — مسح الأعضاء عبر API مباشر
+{b}`{cmd}تفلش`{e} — مسح الأعضاء عبر بوت (بالآيدي)
+{b}`{cmd}تفلش2`{e} — مسح الأعضاء عبر بوت (باليوزر)
+{b}`{cmd}وقف`{e} — إيقاف عملية التفليش""",
 }
 
 
@@ -3810,6 +3817,132 @@ async def _(event):
                 return await edit_or_reply(m, f"X توقّف بعد أخطاء متتالية.\n بلاغات مُرسلة: {sent}")
         await asyncio.sleep(cfg["speed"])
 
+
+flushing = {"working": False, "mode": "api", "users": [], "usernames": {}}
+
+
+@cmd(r"تفليش$", groups_only=True)
+async def _(event):
+    if flushing["working"]:
+        return await edit_delete(event, "- العملية جارية بالفعل...", 6)
+    flushing["mode"] = "api"
+    await edit_or_reply(event, f" بدأت سحب الضحايا (وضع API المباشر).. اصبر\n(`{PREFIX}وقف` للإيقاف)")
+    await _flush_run(event)
+
+
+@cmd(r"تفلش2$", groups_only=True)
+async def _(event):
+    if flushing["working"]:
+        return await edit_delete(event, "- العملية جارية بالفعل...", 6)
+    flushing["mode"] = "bot_user"
+    await edit_or_reply(event, f" بدأت سحب الضحايا (للبوت باليوزر).. اصبر\n(`{PREFIX}وقف` للإيقاف)")
+    await _flush_run(event)
+
+
+@cmd(r"تفلش$", groups_only=True)
+async def _(event):
+    if flushing["working"]:
+        return await edit_delete(event, "- العملية جارية بالفعل...", 6)
+    flushing["mode"] = "bot"
+    await edit_or_reply(event, f" بدأت سحب الضحايا (للبوت بالآيدي).. اصبر\n(`{PREFIX}وقف` للإيقاف)")
+    await _flush_run(event)
+
+
+@cmd(r"وقف$")
+async def _(event):
+    if not flushing["working"]:
+        return await edit_delete(event, "- لا توجد عملية جارية", 6)
+    flushing["working"] = False
+    await edit_or_reply(event, " تم طلب الإيقاف ✓")
+
+
+async def _flush_run(event):
+    flushing["working"] = True
+    flushing["users"] = []
+    flushing["usernames"] = {}
+    collected = 0
+    total = 0
+    try:
+        me = await client.get_me()
+        my_id = me.id
+    except Exception:
+        my_id = None
+    try:
+        async for u in client.iter_participants(event.chat_id):
+            if not flushing["working"]:
+                break
+            if my_id and u.id == my_id:
+                continue
+            flushing["users"].append(u.id)
+            if getattr(u, "username", None):
+                flushing["usernames"][u.id] = u.username
+            collected += 1
+            if collected % 200 == 0:
+                try:
+                    await event.edit(f" جمع الأعضاء... `{collected}`")
+                except Exception:
+                    pass
+        try:
+            await event.edit(f" تم جمع `{len(flushing['users'])}` عضو. جاري التفليش...")
+        except Exception:
+            pass
+        if flushing["mode"] == "api":
+            total = await _flush_api(event)
+        else:
+            total = await _flush_bot(event)
+        state = " اكتمل التفليش" if flushing["working"] else " أُوقفت العملية"
+        await edit_or_reply(event, f"{state} ✓\nأُرسلت أو طُردت: {total}")
+    except Exception as e:
+        await edit_or_reply(event, f"X خطأ في التفليش:\n`{e}`")
+    finally:
+        flushing["working"] = False
+
+
+async def _flush_api(event):
+    count = 0
+    for uid in flushing["users"]:
+        if not flushing["working"]:
+            break
+        try:
+            if getattr(event.chat, "megagroup", False) or getattr(event.chat, "broadcast", False):
+                rights = ChatBannedRights(until_date=0, view_messages=True)
+                await client(functions.channels.EditBannedRequest(
+                    channel=event.chat, participant=uid, banned_rights=rights
+                ))
+            else:
+                await client(functions.messages.DeleteChatUserRequest(
+                    chat_id=event.chat_id, user_id=uid
+                ))
+            count += 1
+        except FloodWaitError as e:
+            await asyncio.sleep(e.seconds + 1)
+        except Exception:
+            pass
+        await asyncio.sleep(0.9)
+    return count
+
+
+async def _flush_bot(event):
+    count = 0
+    for uid in flushing["users"]:
+        if not flushing["working"]:
+            break
+        username = flushing["usernames"].get(uid)
+        if flushing["mode"] == "bot_user" and username:
+            text = f"حظر @{username}"
+        else:
+            text = f"حظر {uid}"
+        try:
+            await client.send_message(event.chat_id, text)
+            count += 1
+        except FloodWaitError as e:
+            await asyncio.sleep(e.seconds + 1)
+        except Exception:
+            pass
+        await asyncio.sleep(0.3)
+        if count % 20 == 0:
+            await asyncio.sleep(2.0)
+    return count
 
 
 DIGIT_SETS = {
