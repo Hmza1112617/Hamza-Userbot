@@ -2000,8 +2000,8 @@ async def _(event):
         try:
             lo = float(parts[0].strip())
             hi = float(parts[1].strip())
-            if lo <= 0 or hi <= 0:
-                return await edit_delete(event, "- الوقت يجب أن يكون أكبر من 0", 6)
+            if lo < 0 or hi < 0:
+                return await edit_delete(event, "- القيمة يجب أن تكون 0 أو أكثر", 6)
             if lo > hi:
                 lo, hi = hi, lo
             forward_delay_min = lo
@@ -2012,13 +2012,13 @@ async def _(event):
     else:
         try:
             delay = float(arg)
-            if delay <= 0:
-                return await edit_delete(event, "- الوقت يجب أن يكون أكبر من 0", 6)
+            if delay < 0:
+                return await edit_delete(event, "- القيمة يجب أن تكون 0 أو أكثر", 6)
             forward_delay_min = delay
             forward_delay_max = delay
             await edit_or_reply(event, f"تم ضبط ديلاي التحويل إلى {delay}ث ✓")
         except (ValueError, AttributeError):
-            await edit_delete(event, "- قيمة غير صالحة | مثال: ديلاي 0.5 أو ديلاي 0.3 ~ 1.5", 6)
+            await edit_delete(event, "- قيمة غير صالحة | مثال: ديلاي 0 أو ديلاي 0.3 ~ 1.5", 6)
 
 
 
