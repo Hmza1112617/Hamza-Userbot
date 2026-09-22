@@ -1721,16 +1721,13 @@ async def _forward_loop(chat_id):
         if not selected_saved_msgs:
             forward_running = False
             break
-        for msg in list(selected_saved_msgs):
-            if not forward_running:
-                break
-            try:
-                await client.forward_messages(chat_id, msg)
-            except Exception as e:
-                print(f"forward error: {e}")
-            import random as _rnd
-            spd = _rnd.uniform(forward_delay_min, forward_delay_max) if forward_delay_min != forward_delay_max else forward_delay_min
-            await asyncio.sleep(spd)
+        try:
+            await client.forward_messages(chat_id, list(selected_saved_msgs))
+        except Exception as e:
+            print(f"forward error: {e}")
+        import random as _rnd
+        spd = _rnd.uniform(forward_delay_min, forward_delay_max) if forward_delay_min != forward_delay_max else forward_delay_min
+        await asyncio.sleep(spd)
 
 
 _INS_KEYS = {
@@ -1991,6 +1988,7 @@ async def _auto_follow(event):
 
 async def _follow_loop():
     """حلقة تتبع مستمرة — ترسل ردود بشكل دوري على المستهدف حسب السرعة المحددة"""
+    import random as _rnd
     me_id = None
     try:
         me = await client.get_me()
@@ -2023,18 +2021,26 @@ async def _follow_loop():
                                 break
                 except Exception:
                     pass
-            word = generate_insult()
+            words = []
+            batch = max(1, int(_rnd.uniform(spam_batch_min, spam_batch_max)))
+            for _i in range(batch):
+                words.append(generate_insult())
             try:
                 if flood_guard_enabled and flood_guard:
                     await flood_guard.wait_if_needed()
-                await client.send_message(chat_id, word, reply_to=last_msg_id)
+                if len(words) == 1:
+                    await client.send_message(chat_id, words[0], reply_to=last_msg_id)
+                else:
+                    await asyncio.gather(
+                        *[client.send_message(chat_id, w, reply_to=last_msg_id) for w in words],
+                        return_exceptions=True,
+                    )
             except Exception:
                 pass
         except Exception:
             pass
-        import random as _rnd
         spd = _rnd.uniform(spam_delay_min, spam_delay_max) if spam_delay_min != spam_delay_max else spam_delay_min
-        await asyncio.sleep(max(spd, 1.0))
+        await asyncio.sleep(spd)
 
 
 @cmd(r"حماية الفلود$")
