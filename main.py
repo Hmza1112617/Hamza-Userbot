@@ -477,8 +477,9 @@ MENU = {
 {b}`{cmd}ترجمة`{e} — بالرد لترجمة النص""",
     "م10": """{header_opa امر السبام والصملات}
 
-{b}`{cmd}نيكه`{e} — سبام سب مولّد بالرد يستهدف
-{b}`{cmd}خلاص`{e} — إيقاف السبام
+{b}`{cmd}نيكه`{e} — سبام بتحديد أكثر من هدف (يوزرات/رد)
+{b}`{cmd}خلاص`{e} — إيقاف السبام من كل الأهداف
+{b}`{cmd}الأهداف`{e} — عرض أهداف الإرسال الجارية
 {b}`{cmd}سرعه`{e} — ضبط سرعة الإرسال
 {b}`{cmd}دفعة`{e} — عدد رسائل كل دفعة (مثل 1 ~ 10)
 {b}`{cmd}سب ذكاء`{e} — توغل السب بـ AI بدل المولّد المحلي
@@ -1435,9 +1436,7 @@ async def _(event):
 
 
 
-spam_running = False
-spam_task = None
-spam_typing_task = None
+spam_targets = {}
 spam_delay_min = 3.0
 spam_delay_max = 5.0
 spam_batch_min = 1
@@ -1621,7 +1620,7 @@ class TextFloodGuard:
 
 
 async def _keep_typing(chat_id):
-    while spam_running:
+    while chat_id in spam_targets:
         try:
             async with client.action(chat_id, "typing"):
                 await asyncio.sleep(4)
@@ -1630,13 +1629,12 @@ async def _keep_typing(chat_id):
 
 
 async def _spam_loop(chat_id, reply_to=None):
-    global spam_running
-    while spam_running:
+    while chat_id in spam_targets:
         import random as _rnd
         batch = max(1, int(_rnd.uniform(spam_batch_min, spam_batch_max)))
         words = []
         for i in range(batch):
-            if not spam_running:
+            if chat_id not in spam_targets:
                 break
             words.append(await _spam_next_word())
         if words:
@@ -1775,38 +1773,68 @@ async def _(event):
     )
 
 
-@cmd(r"نيكه$")
+@cmd(r"نيكه(?:\s|$)([\s\S]*)")
 async def _(event):
-    global spam_running, spam_task, spam_typing_task, spam_ai_target
-    if spam_running:
-        return await edit_delete(event, "- الإرسال يعمل بالفعل", 6)
+    global spam_ai_target
+    arg = (event.pattern_match.group(1) or "").strip()
     reply = await event.get_reply_message()
     reply_to = reply.id if reply else None
+
+    targets = []
+    if arg:
+        for tok in arg.split():
+            ent = None
+            try:
+                if tok.isdigit() or (tok.startswith("-") and tok[1:].isdigit()):
+                    ent = await event.client.get_entity(int(tok))
+                else:
+                    ent = await event.client.get_entity(tok)
+            except Exception:
+                ent = None
+            if ent:
+                targets.append(getattr(ent, "id", None))
+        targets = [t for t in targets if t]
+    if not targets:
+        targets = [event.chat_id]
+
     if spam_ai_enabled:
-        tgt = await _resolve_spam_target(reply)
-        tgt_name = (tgt.get("name") or "").strip()
-        spam_ai_target = tgt_name
+        if reply:
+            tgt = await _resolve_spam_target(reply)
+            spam_ai_target = (tgt.get("name") or "").strip()
+        else:
+            spam_ai_target = arg.split()[0] if arg else ""
+        db_set("settings", "spam_ai_target", spam_ai_target)
     else:
         spam_ai_target = ""
-    db_set("settings", "spam_ai_target", spam_ai_target)
-    spam_running = True
-    db_set("settings", "spam_active", True)
-    db_set("settings", "spam_chat", event.chat_id)
-    db_set("settings", "spam_reply", reply_to)
+
+    started = []
+    for cid in targets:
+        if cid in spam_targets:
+            continue
+        r_to = reply_to if cid == event.chat_id else None
+        spam_targets[cid] = {"reply": r_to}
+        asyncio.ensure_future(_spam_loop(cid, r_to))
+        asyncio.ensure_future(_keep_typing(cid))
+        started.append(cid)
+
+    if not started:
+        return await edit_delete(event, "- كل الأهداف تعمل بالفعل", 6)
+
+    db_set("settings", "spam_targets", [str(c) for c in started])
     db_set("settings", "spam_delay_min", spam_delay_min)
     db_set("settings", "spam_delay_max", spam_delay_max)
     db_set("settings", "spam_batch_min", spam_batch_min)
     db_set("settings", "spam_batch_max", spam_batch_max)
-    spam_task = asyncio.ensure_future(_spam_loop(event.chat_id, reply_to))
-    spam_typing_task = asyncio.ensure_future(_keep_typing(event.chat_id))
+
     import random as _rnd
     speed = _rnd.uniform(spam_delay_min, spam_delay_max) if spam_delay_min != spam_delay_max else spam_delay_min
     state = "🛡" if flood_guard_enabled else ""
     batch_txt = f"{spam_batch_min} ~ {spam_batch_max}" if spam_batch_min != spam_batch_max else str(spam_batch_min)
     msg = f" بدء الإرسال... ⏱ {spam_delay_min} ~ {spam_delay_max}ث | دفعة: {batch_txt} {state}"
+    msg += f"\n الأهداف ({len(started)}): " + ", ".join(f"`{c}`" for c in started)
     if spam_ai_enabled:
         msg += "\n 🧠 وضع الذكاء: مفعل" + (f" | الهدف: {spam_ai_target}" if spam_ai_target else " | بدون هدف")
-    if reply_to:
+    if reply_to and event.chat_id in started:
         msg += "\n مستهدف: على الرسالة المُشار إليها"
     await event.edit(msg)
 
@@ -1844,15 +1872,25 @@ async def _resolve_spam_target(reply):
 
 @cmd(r"خلاص$")
 async def _(event):
-    global spam_running, spam_typing_task
-    if not spam_running:
+    if not spam_targets:
         return await edit_delete(event, "- الإرسال متوقف بالفعل", 6)
-    spam_running = False
-    db_set("settings", "spam_active", False)
-    if spam_typing_task:
-        spam_typing_task.cancel()
-        spam_typing_task = None
-    await event.edit(" تم إيقاف الإرسال")
+    count = len(spam_targets)
+    spam_targets.clear()
+    db_set("settings", "spam_targets", [])
+    await event.edit(f" تم إيقاف الإرسال من كل الأهداف ({count})")
+
+
+@cmd(r"الأهداف$")
+async def _(event):
+    if not spam_targets:
+        return await edit_delete(event, "- لا توجد أهداف جارية", 6)
+    lines = []
+    for cid, info in spam_targets.items():
+        r = "رد" if info.get("reply") else "-"
+        lines.append(f"• `{cid}` | {r}")
+    await edit_or_reply(
+        event, f"**| أهداف الإرسال الجارية ({len(lines)}):**\n\n" + "\n".join(lines)
+    )
 
 
 @cmd(r"دفعة(?:\s|$)([\s\S]*)")
@@ -4727,29 +4765,34 @@ async def _follow_checker_loop():
 
 async def _resume_persistent_tasks():
     """يستأنف المهام المستمرة بعد إعادة التشغيل من إعدادات settings.json"""
-    global spam_running, spam_task, spam_typing_task, spam_delay_min, spam_delay_max, spam_batch_min, spam_batch_max, spam_ai_enabled, spam_ai_target, _time_task
+    global spam_targets, spam_delay_min, spam_delay_max, spam_batch_min, spam_batch_max, spam_ai_enabled, spam_ai_target, _time_task
 
     spam_ai_enabled = db_get("settings", "spam_ai_enabled", False)
     spam_ai_target = db_get("settings", "spam_ai_target", "")
 
-    if db_get("settings", "spam_active", False):
-        chat = db_get("settings", "spam_chat")
-        reply_to = db_get("settings", "spam_reply")
-        dmin = db_get("settings", "spam_delay_min", 3.0)
-        dmax = db_get("settings", "spam_delay_max", 5.0)
-        bmin = db_get("settings", "spam_batch_min", 1)
-        bmax = db_get("settings", "spam_batch_max", 1)
-        if chat:
-            spam_running = True
-            spam_delay_min = float(dmin) if dmin else 3.0
-            spam_delay_max = float(dmax) if dmax else 5.0
-            spam_batch_min = max(1, int(bmin or 1))
-            spam_batch_max = max(1, int(bmax or 1))
-            spam_task = asyncio.ensure_future(_spam_loop(chat, reply_to))
-            spam_typing_task = asyncio.ensure_future(_keep_typing(chat))
-            print("  ↻ تم استئناف الإرسال التلقائي (السبام)")
-        else:
-            db_set("settings", "spam_active", False)
+    targets = db_get("settings", "spam_targets", [])
+    dmin = db_get("settings", "spam_delay_min", 3.0)
+    dmax = db_get("settings", "spam_delay_max", 5.0)
+    bmin = db_get("settings", "spam_batch_min", 1)
+    bmax = db_get("settings", "spam_batch_max", 1)
+    if isinstance(targets, str):
+        targets = [targets]
+    if targets:
+        spam_delay_min = float(dmin) if dmin else 3.0
+        spam_delay_max = float(dmax) if dmax else 5.0
+        spam_batch_min = max(1, int(bmin or 1))
+        spam_batch_max = max(1, int(bmax or 1))
+        for c in targets:
+            try:
+                cid = int(c)
+                if cid in spam_targets:
+                    continue
+                spam_targets[cid] = {"reply": None}
+                asyncio.ensure_future(_spam_loop(cid, None))
+                asyncio.ensure_future(_keep_typing(cid))
+            except Exception:
+                continue
+        print("  ↻ تم استئناف الإرسال التلقائي (السبام) — يهدف " + str(len(spam_targets)))
 
     if db_get("settings", "time_active", False):
         if _time_task is None or _time_task.done():
