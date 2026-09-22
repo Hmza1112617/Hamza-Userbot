@@ -4800,18 +4800,18 @@ async def _(event):
                 sent += 1
                 if i >= 9:
                     break
+            murl = raw.get("music")
+            if murl:
+                await m.edit(" جاري جلب المزيكا...")
+                dest = os.path.join(BASE_DIR, f"tik_music_{_ai_rand_id()}.m4a")
+                tmp_files.append(dest)
+                await asyncio.to_thread(_tik_download_sync, murl, dest)
+                await event.client.send_file(
+                    event.chat_id, dest,
+                    attributes=[types.DocumentAttributeFilename("tiktok_music.m4a")],
+                )
         else:
             return await edit_or_reply(m, "X نوع غير مدعوم")
-        murl = raw.get("music")
-        if murl:
-            await m.edit(" جاري جلب المزيكا...")
-            dest = os.path.join(BASE_DIR, f"tik_music_{_ai_rand_id()}.m4a")
-            tmp_files.append(dest)
-            await asyncio.to_thread(_tik_download_sync, murl, dest)
-            await event.client.send_file(
-                event.chat_id, dest,
-                attributes=[types.DocumentAttributeFilename("tiktok_music.m4a")],
-            )
         await edit_or_reply(m, f" تم التحميل ✓\nوسائط أُرسلت: {sent}" if sent else " تم الجلب ✓")
     except Exception as e:
         await edit_or_reply(m, f"X خطأ: `{e}`")
