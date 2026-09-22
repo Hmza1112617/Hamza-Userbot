@@ -1789,7 +1789,7 @@ async def _(event):
 
 
 async def _resolve_spam_target(reply):
-    """يستخرج اسم المستهدف من الرد: الاسم أو المعرف@ أو نص الرسالة"""
+    """يستخرج اسم المستهدف من الرد: الاسم الكامل (first + last)"""
     name = ""
     raw = ""
     uid = None
@@ -1798,15 +1798,13 @@ async def _resolve_spam_target(reply):
         raw = (reply.text or "").strip()
         try:
             if reply.sender:
-                name = get_display_name(reply.sender)
-                if reply.sender.username:
-                    name = "@" + reply.sender.username
+                first = getattr(reply.sender, "first_name", "") or ""
+                last = getattr(reply.sender, "last_name", "") or ""
+                name = (first + " " + last).strip()
+                if not name:
+                    name = get_display_name(reply.sender)
         except Exception:
             pass
-    if not name and raw:
-        m = re.search(r'@(\w+)', raw)
-        if m:
-            name = "@" + m.group(1)
     if not name and uid:
         name = str(uid)
     return {"name": name, "raw": raw, "uid": uid}
