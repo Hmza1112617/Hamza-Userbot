@@ -403,6 +403,7 @@ MENU_MAIN = f"""✦ ────『قـائـمـة اوامر سورس حـمـ
 • `{PREFIX}م19` ➪ اوامـر محوّل الصوت
 • `{PREFIX}م20` ➪ اوامـر الكتم
 • `{PREFIX}م21` ➪ اوامـر التفليش
+• `{PREFIX}م22` ➪ اوامـر التحميل
 
 ✦ ─────────────────────────── ✦"""
 
@@ -575,6 +576,9 @@ MENU = {
 {b}`{cmd}تفلش`{e} — مسح الأعضاء عبر بوت (بالآيدي)
 {b}`{cmd}تفلش2`{e} — مسح الأعضاء عبر بوت (باليوزر)
 {b}`{cmd}وقف`{e} — إيقاف عملية التفليش""",
+    "م22": """{header_opa امر التحميل}
+
+{b}`{cmd}تيك`{e} — تحميل من تيك توك (فيديو/صورة/مزيكا)""",
 }
 
 
@@ -4717,6 +4721,102 @@ async def _(event):
             if f and os.path.exists(f):
                 try: os.remove(f)
                 except Exception: pass
+
+
+_TIK_API = "https://tiktok-downbloder.vercel.app/"
+
+
+def _tik_fetch_sync(url):
+    """يستدعي API التيك توك ويعيد JSON"""
+    import urllib.parse
+    conn = http.client.HTTPSConnection("tiktok-downbloder.vercel.app", timeout=60)
+    conn.request("GET", "/?url=" + urllib.parse.quote(url, safe=""), headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/138.0.0.0",
+    })
+    res = conn.getresponse()
+    raw = res.read()
+    conn.close()
+    return json.loads(raw.decode("utf-8", "ignore"))
+
+
+def _tik_download_sync(dl_url, dest):
+    """ينزّل ملفاً من رابط مباشر"""
+    conn = http.client.HTTPSConnection("tikcdn.io", timeout=120)
+    conn.request("GET", dl_url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/138.0.0.0",
+        "Referer": "https://www.tiktok.com/",
+    })
+    res = conn.getresponse()
+    with open(dest, "wb") as f:
+        while True:
+            chunk = res.read(65536)
+            if not chunk:
+                break
+            f.write(chunk)
+    conn.close()
+    return dest
+
+
+def _tik_cleanup(files):
+    for f in files:
+        if f and os.path.exists(f):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+
+
+@cmd(r"تيك(?:\s|$)([\s\S]*)")
+async def _(event):
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg:
+        return await edit_delete(event, f"- اكتب: {PREFIX}تيك <رابط تيك توك>", 8)
+    m = await event.edit("- جاري جلب البيانات...")
+    tmp_files = []
+    try:
+        data = await asyncio.to_thread(_tik_fetch_sync, arg)
+        raw = data.get("result", {}).get("raw", {}).get("result", {})
+        mtype = raw.get("type") or ""
+        if not data.get("success") or not mtype:
+            return await edit_or_reply(m, "X تعذّر الجلب — الرابط غير صالح أو محذوف")
+        await m.edit(f" وجدت: {mtype} ✓\nجارٍ التحميل...")
+        sent = 0
+        if mtype == "video":
+            vurl = raw.get("video")
+            if vurl:
+                dest = os.path.join(BASE_DIR, f"tik_video_{_ai_rand_id()}.mp4")
+                tmp_files.append(dest)
+                await asyncio.to_thread(_tik_download_sync, vurl, dest)
+                cap = (raw.get("desc") or "").strip()
+                await event.client.send_file(event.chat_id, dest, caption=cap[:1024] or None)
+                sent += 1
+        elif mtype == "image":
+            imgs = raw.get("images") or []
+            for i, iurl in enumerate(imgs):
+                dest = os.path.join(BASE_DIR, f"tik_img_{_ai_rand_id()}.webp")
+                tmp_files.append(dest)
+                await asyncio.to_thread(_tik_download_sync, iurl, dest)
+                await event.client.send_file(event.chat_id, dest)
+                sent += 1
+                if i >= 9:
+                    break
+        else:
+            return await edit_or_reply(m, "X نوع غير مدعوم")
+        murl = raw.get("music")
+        if murl:
+            await m.edit(" جاري جلب المزيكا...")
+            dest = os.path.join(BASE_DIR, f"tik_music_{_ai_rand_id()}.m4a")
+            tmp_files.append(dest)
+            await asyncio.to_thread(_tik_download_sync, murl, dest)
+            await event.client.send_file(
+                event.chat_id, dest,
+                attributes=[types.DocumentAttributeFilename("tiktok_music.m4a")],
+            )
+        await edit_or_reply(m, f" تم التحميل ✓\nوسائط أُرسلت: {sent}" if sent else " تم الجلب ✓")
+    except Exception as e:
+        await edit_or_reply(m, f"X خطأ: `{e}`")
+    finally:
+        _tik_cleanup(tmp_files)
 
 
 async def _follow_checker_loop():
