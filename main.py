@@ -481,6 +481,7 @@ MENU = {
 {b}`{cmd}خلاص`{e} — إيقاف السبام
 {b}`{cmd}سرعه`{e} — ضبط سرعة الإرسال
 {b}`{cmd}دفعة`{e} — عدد رسائل كل دفعة (مثل 1 ~ 10)
+{b}`{cmd}سب ذكاء`{e} — توغل السب بـ AI بدل المولّد المحلي
 {b}`{cmd}تتبع`{e} — رد تلقائي على رسائل شخص في الخاص أو المجموعات
 {b}`{cmd}كافي`{e} — إيقاف الرد التلقائي
 {b}`{cmd}معاينة سب`{e} — عرض عينات من المولّد
@@ -1441,6 +1442,8 @@ spam_delay_min = 3.0
 spam_delay_max = 5.0
 spam_batch_min = 1
 spam_batch_max = 1
+spam_ai_enabled = False
+spam_ai_target = ""
 follow_running = False
 forward_running = False
 forward_task = None
@@ -1634,7 +1637,7 @@ async def _spam_loop(chat_id, reply_to=None):
         for i in range(batch):
             if not spam_running:
                 break
-            word = generate_insult()
+            word = await _spam_next_word()
             try:
                 if flood_guard_enabled and flood_guard:
                     await flood_guard.wait_if_needed()
@@ -1646,6 +1649,35 @@ async def _spam_loop(chat_id, reply_to=None):
         if spam_delay_min > 0 or spam_delay_max > 0:
             speed = _rnd.uniform(spam_delay_min, spam_delay_max)
             await asyncio.sleep(speed)
+
+
+async def _spam_next_word():
+    """يولّد كلمة السب: عبر AI إذا مفعّل، وإلا من المكتبة المحلية"""
+    if spam_ai_enabled:
+        try:
+            prompt = _ai_insult_prompt(spam_ai_target)
+            word = await asyncio.to_thread(_ai_request_sync, prompt)
+            if word and len(word) > 10:
+                return word
+        except Exception as e:
+            print(f"ai spam error: {e}")
+    return generate_insult()
+
+
+def _ai_insult_prompt(target):
+    name = (target or "").strip().lstrip("@") or "الفاجر"
+    return (
+        'Generate a chaotic Iraqi Arabic insult rant targeting a person whose name is: "'
+        + name + '"'
+        + "\n\nStart with: اسمع ي <his name in Arabic> ي ابن قحبه, then continue.\n\n"
+        "Rules:\n"
+        "- The rant is FREELY creative: mix 50% words from the given lists with 50% your OWN random vulgar Iraqi words. Do NOT just reuse the lists mechanically. Let it flow wild like a real angry rant, flipping between listed words and invented ones.\n"
+        "- Convert target name to Arabic letters if English (Python -> بيثون). NEVER keep Latin letters. ONLY Arabic output.\n"
+        "- Randomly interleave these components with your own invented ones: acts (سحق, ادعس, اغتصب, انيجمك, احرق, اشليف, انيج, اطحن), body parts (كسمك, قحبتي, طيزك, عيري, زبي, امك, كس اختك, كس خالتك, شرفك, دينك), target insults (ي العري, ي الكلبه, ي المحرمه, ي القحبتين, ي الغبيتين, ي الديوث, ي الاوزب, ي ابن جراره, ي ابن عريه, ي ابن فاجره, ي ابن ديوث, ي مستديث, ي زنوه, ي كاثوليكيه)\n"
+        "- No structure, no punctuation, chaotic stream of words, each sentence different in length and flavor\n"
+        "- 3-5 sentences, starting with the Arabic-converted name\n"
+        "- Write ONLY the rant, no explanation"
+    )
 
 
 async def _forward_loop(chat_id):
@@ -1713,11 +1745,18 @@ async def _(event):
 
 @cmd(r"نيكه$")
 async def _(event):
-    global spam_running, spam_task, spam_typing_task
+    global spam_running, spam_task, spam_typing_task, spam_ai_target
     if spam_running:
         return await edit_delete(event, "- الإرسال يعمل بالفعل", 6)
     reply = await event.get_reply_message()
     reply_to = reply.id if reply else None
+    if spam_ai_enabled:
+        tgt = await _resolve_spam_target(reply)
+        tgt_name = (tgt.get("name") or "").strip()
+        spam_ai_target = tgt_name
+    else:
+        spam_ai_target = ""
+    db_set("settings", "spam_ai_target", spam_ai_target)
     spam_running = True
     db_set("settings", "spam_active", True)
     db_set("settings", "spam_chat", event.chat_id)
@@ -1733,9 +1772,44 @@ async def _(event):
     state = "🛡" if flood_guard_enabled else ""
     batch_txt = f"{spam_batch_min} ~ {spam_batch_max}" if spam_batch_min != spam_batch_max else str(spam_batch_min)
     msg = f" بدء الإرسال... ⏱ {spam_delay_min} ~ {spam_delay_max}ث | دفعة: {batch_txt} {state}"
+    if spam_ai_enabled:
+        msg += "\n 🧠 وضع الذكاء: مفعل" + (f" | الهدف: {spam_ai_target}" if spam_ai_target else " | بدون هدف")
     if reply_to:
         msg += "\n مستهدف: على الرسالة المُشار إليها"
     await event.edit(msg)
+
+
+@cmd(r"سب ذكاء$")
+async def _(event):
+    global spam_ai_enabled
+    spam_ai_enabled = not spam_ai_enabled
+    db_set("settings", "spam_ai_enabled", spam_ai_enabled)
+    state = "مفعل 🧠" if spam_ai_enabled else "معطّل"
+    await edit_or_reply(event, f"وضع سب الذكاء: {state}\n(عند التفعيل يولّد السب بـ AI ويستخرج الهدف من الرد)")
+
+
+async def _resolve_spam_target(reply):
+    """يستخرج اسم المستهدف من الرد: الاسم أو المعرف@ أو نص الرسالة"""
+    name = ""
+    raw = ""
+    uid = None
+    if reply:
+        uid = reply.sender_id
+        raw = (reply.text or "").strip()
+        try:
+            if reply.sender:
+                name = get_display_name(reply.sender)
+                if reply.sender.username:
+                    name = "@" + reply.sender.username
+        except Exception:
+            pass
+    if not name and raw:
+        m = re.search(r'@(\w+)', raw)
+        if m:
+            name = "@" + m.group(1)
+    if not name and uid:
+        name = str(uid)
+    return {"name": name, "raw": raw, "uid": uid}
 
 
 @cmd(r"خلاص$")
@@ -4614,7 +4688,10 @@ async def _follow_checker_loop():
 
 async def _resume_persistent_tasks():
     """يستأنف المهام المستمرة بعد إعادة التشغيل من إعدادات settings.json"""
-    global spam_running, spam_task, spam_typing_task, spam_delay_min, spam_delay_max, spam_batch_min, spam_batch_max, _time_task
+    global spam_running, spam_task, spam_typing_task, spam_delay_min, spam_delay_max, spam_batch_min, spam_batch_max, spam_ai_enabled, spam_ai_target, _time_task
+
+    spam_ai_enabled = db_get("settings", "spam_ai_enabled", False)
+    spam_ai_target = db_get("settings", "spam_ai_target", "")
 
     if db_get("settings", "spam_active", False):
         chat = db_get("settings", "spam_chat")
