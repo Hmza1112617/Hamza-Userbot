@@ -487,7 +487,10 @@ MENU = {
 {b}`{cmd}اضف سب`{e} — لإثراء المكتبة
 {b}`{cmd}حماية الفلود`{e} — تشغيل/إيقاف الحماية
 {b}`{cmd}الفلود`{e} — عرض إحصائيات الحماية
-{b}`{cmd}تحديد`{e} — بالرد لتحديد رسالة من المحفوظات
+{b}`{cmd}تحديد`{e} — بالرد لإضافة رسالة من المحفوظات (بدون حدود)
+{b}`{cmd}الغاء تحديد`{e} — بالرد لإزالة رسالة محددة
+{b}`{cmd}المحددات`{e} — عرض كل الرسائل المحددة
+{b}`{cmd}مسح كل محدد`{e} — مسح كل الرسائل المحددة
 {b}`{cmd}تشغيل التحويل`{e} — بدء التحويل من المحفوظات
 {b}`{cmd}ايقاف التحويل`{e} — إيقاف التحويل
 {b}`{cmd}ديلاي`{e} — ضبط زمن التحويل""",
@@ -779,7 +782,7 @@ async def _(event):
     await edit_delete(event, "تم إلغاء التثبيت ✓", 5)
 
 
-@cmd(r"مسح(?:\s|$)([\s\S]*)", groups_only=True)
+@cmd(r"مسح(?:\s|$)(?!كل محدد)([\s\S]*)", groups_only=True)
 async def _(event):
     reply = await event.get_reply_message()
     args = event.pattern_match.group(1)
@@ -1439,7 +1442,7 @@ follow_running = False
 forward_running = False
 forward_task = None
 forward_delay = 0.5
-selected_saved_msg = None
+selected_saved_msgs = []
 flood_guard_enabled = False
 flood_guard = None
 
@@ -1638,14 +1641,17 @@ async def _spam_loop(chat_id, reply_to=None):
 async def _forward_loop(chat_id):
     global forward_running
     while forward_running:
-        if not selected_saved_msg:
+        if not selected_saved_msgs:
             forward_running = False
             break
-        try:
-            await client.forward_messages(chat_id, selected_saved_msg)
-        except Exception as e:
-            print(f"forward error: {e}")
-        await asyncio.sleep(forward_delay)
+        for msg in list(selected_saved_msgs):
+            if not forward_running:
+                break
+            try:
+                await client.forward_messages(chat_id, msg)
+            except Exception as e:
+                print(f"forward error: {e}")
+            await asyncio.sleep(forward_delay)
 
 
 _INS_KEYS = {
@@ -1902,28 +1908,72 @@ async def _(event):
 
 @cmd(r"تحديد$")
 async def _(event):
-    global selected_saved_msg
+    global selected_saved_msgs
     reply = await event.get_reply_message()
     if not reply:
         return await edit_delete(event, "- رد على الرسالة في المحفوظات", 8)
     me = await client.get_me()
     if event.chat_id != me.id:
         return await edit_delete(event, "- استخدم هذا الأمر في المحفوظات فقط", 8)
-    selected_saved_msg = reply
+    if any(getattr(m, "id", None) == reply.id for m in selected_saved_msgs):
+        return await edit_delete(event, "- هذه الرسالة محددة مسبقاً", 6)
+    selected_saved_msgs.append(reply)
     preview = (reply.text or "[وسائط]")[:50]
-    await edit_or_reply(event, f"تم تحديد الرسالة ✓\n📝 {preview}...")
+    await edit_or_reply(
+        event, f"تم تحديد الرسالة ({len(selected_saved_msgs)}) ✓\n📝 {preview}..."
+    )
+
+
+@cmd(r"الغاء تحديد$")
+async def _(event):
+    global selected_saved_msgs
+    reply = await event.get_reply_message()
+    if not reply:
+        return await edit_delete(event, "- رد على الرسالة في المحفوظات", 8)
+    before = len(selected_saved_msgs)
+    selected_saved_msgs = [m for m in selected_saved_msgs if getattr(m, "id", None) != reply.id]
+    if len(selected_saved_msgs) == before:
+        return await edit_delete(event, "- هذه الرسالة غير محددة", 6)
+    await edit_or_reply(
+        event, f"تم إلغاء تحديد الرسالة ✓\nالمتبقي: {len(selected_saved_msgs)}"
+    )
+
+
+@cmd(r"مسح كل محدد$")
+async def _(event):
+    global selected_saved_msgs
+    if not selected_saved_msgs:
+        return await edit_delete(event, "- لا توجد رسائل محددة", 6)
+    count = len(selected_saved_msgs)
+    selected_saved_msgs = []
+    await edit_or_reply(event, f"تم مسح كل الرسائل المحددة ({count}) ✓")
+
+
+@cmd(r"المحددات$")
+async def _(event):
+    if not selected_saved_msgs:
+        return await edit_delete(event, "- لا توجد رسائل محددة", 6)
+    lines = []
+    for i, m in enumerate(selected_saved_msgs, 1):
+        preview = (m.text or "[وسائط]").replace("\n", " ")[:40]
+        lines.append(f"{i}. `{getattr(m, 'id', '?')}` {preview}")
+    await edit_or_reply(
+        event, f"**| الرسائل المحددة ({len(lines)}):**\n\n" + "\n".join(lines)
+    )
 
 
 @cmd(r"تشغيل التحويل$")
 async def _(event):
     global forward_running, forward_task
-    if not selected_saved_msg:
-        return await edit_delete(event, "- لم يتم تحديد رسالة! استخدم .تحديد أولاً", 8)
+    if not selected_saved_msgs:
+        return await edit_delete(event, "- لم يتم تحديد رسائل! استخدم .تحديد أولاً", 8)
     if forward_running:
         return await edit_delete(event, "- التحويل يعمل بالفعل", 6)
     forward_running = True
     forward_task = asyncio.ensure_future(_forward_loop(event.chat_id))
-    await event.edit(f" تشغيل التحويل من المحفوظات... delay: {forward_delay}ث")
+    await event.edit(
+        f" تشغيل التحويل من المحفوظات... رسائل: {len(selected_saved_msgs)} | delay: {forward_delay}ث"
+    )
 
 
 @cmd(r"ايقاف التحويل$")
