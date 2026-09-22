@@ -480,6 +480,7 @@ MENU = {
 {b}`{cmd}نيكه`{e} — سبام سب مولّد بالرد يستهدف
 {b}`{cmd}خلاص`{e} — إيقاف السبام
 {b}`{cmd}سرعه`{e} — ضبط سرعة الإرسال
+{b}`{cmd}دفعة`{e} — عدد رسائل كل دفعة (مثل 1 ~ 10)
 {b}`{cmd}تتبع`{e} — رد تلقائي على رسائل شخص في الخاص أو المجموعات
 {b}`{cmd}كافي`{e} — إيقاف الرد التلقائي
 {b}`{cmd}معاينة سب`{e} — عرض عينات من المولّد
@@ -1438,6 +1439,8 @@ spam_task = None
 spam_typing_task = None
 spam_delay_min = 3.0
 spam_delay_max = 5.0
+spam_batch_min = 1
+spam_batch_max = 1
 follow_running = False
 forward_running = False
 forward_task = None
@@ -1626,15 +1629,21 @@ async def _keep_typing(chat_id):
 async def _spam_loop(chat_id, reply_to=None):
     global spam_running
     while spam_running:
-        word = generate_insult()
-        try:
-            if flood_guard_enabled and flood_guard:
-                await flood_guard.wait_if_needed()
-            await client.send_message(chat_id, word, reply_to=reply_to)
-        except Exception as e:
-            print(f"spam error: {e}")
+        import random as _rnd
+        batch = max(1, int(_rnd.uniform(spam_batch_min, spam_batch_max)))
+        for i in range(batch):
+            if not spam_running:
+                break
+            word = generate_insult()
+            try:
+                if flood_guard_enabled and flood_guard:
+                    await flood_guard.wait_if_needed()
+                await client.send_message(chat_id, word, reply_to=reply_to)
+            except FloodWaitError as e:
+                await asyncio.sleep(e.seconds + 1)
+            except Exception as e:
+                print(f"spam error: {e}")
         if spam_delay_min > 0 or spam_delay_max > 0:
-            import random as _rnd
             speed = _rnd.uniform(spam_delay_min, spam_delay_max)
             await asyncio.sleep(speed)
 
@@ -1715,12 +1724,15 @@ async def _(event):
     db_set("settings", "spam_reply", reply_to)
     db_set("settings", "spam_delay_min", spam_delay_min)
     db_set("settings", "spam_delay_max", spam_delay_max)
+    db_set("settings", "spam_batch_min", spam_batch_min)
+    db_set("settings", "spam_batch_max", spam_batch_max)
     spam_task = asyncio.ensure_future(_spam_loop(event.chat_id, reply_to))
     spam_typing_task = asyncio.ensure_future(_keep_typing(event.chat_id))
     import random as _rnd
     speed = _rnd.uniform(spam_delay_min, spam_delay_max) if spam_delay_min != spam_delay_max else spam_delay_min
     state = "🛡" if flood_guard_enabled else ""
-    msg = f" بدء الإرسال... ⏱ {spam_delay_min} ~ {spam_delay_max}ث {state}"
+    batch_txt = f"{spam_batch_min} ~ {spam_batch_max}" if spam_batch_min != spam_batch_max else str(spam_batch_min)
+    msg = f" بدء الإرسال... ⏱ {spam_delay_min} ~ {spam_delay_max}ث | دفعة: {batch_txt} {state}"
     if reply_to:
         msg += "\n مستهدف: على الرسالة المُشار إليها"
     await event.edit(msg)
@@ -1737,6 +1749,39 @@ async def _(event):
         spam_typing_task.cancel()
         spam_typing_task = None
     await event.edit(" تم إيقاف الإرسال")
+
+
+@cmd(r"دفعة(?:\s|$)([\s\S]*)")
+async def _(event):
+    global spam_batch_min, spam_batch_max
+    arg = (event.pattern_match.group(1) or "").strip()
+    if not arg:
+        await edit_or_reply(event, f"- مثال: `{PREFIX}دفعة 3` أو `{PREFIX}دفعة 1 ~ 10`")
+        return
+    if "~" in arg:
+        parts = arg.split("~", 1)
+        try:
+            lo = float(parts[0].strip())
+            hi = float(parts[1].strip())
+            if lo < 1 or hi < 1:
+                return await edit_delete(event, "- القيمة يجب أن تكون 1 أو أكثر", 6)
+            if lo > hi:
+                lo, hi = hi, lo
+            spam_batch_min = int(lo)
+            spam_batch_max = int(hi)
+            await edit_or_reply(event, f"تم ضبط الدفعة: عشوائي بين {int(lo)} و {int(hi)} رسالة ✓")
+        except (ValueError, AttributeError):
+            await edit_delete(event, "- صيغة خاطئة | مثال: دفعة 1 ~ 10", 6)
+    else:
+        try:
+            count = float(arg)
+            if count < 1:
+                return await edit_delete(event, "- القيمة يجب أن تكون 1 أو أكثر", 6)
+            spam_batch_min = int(count)
+            spam_batch_max = int(count)
+            await edit_or_reply(event, f"تم ضبط الدفعة إلى {int(count)} رسالة ✓")
+        except (ValueError, AttributeError):
+            await edit_delete(event, "- قيمة غير صالحة | مثال: دفعة 3 أو دفعة 1 ~ 10", 6)
 
 
 @cmd(r"(?:وقت الارسال|سرعه)(?:\s|$)([\s\S]*)")
@@ -4569,17 +4614,21 @@ async def _follow_checker_loop():
 
 async def _resume_persistent_tasks():
     """يستأنف المهام المستمرة بعد إعادة التشغيل من إعدادات settings.json"""
-    global spam_running, spam_task, spam_typing_task, spam_delay_min, spam_delay_max, _time_task
+    global spam_running, spam_task, spam_typing_task, spam_delay_min, spam_delay_max, spam_batch_min, spam_batch_max, _time_task
 
     if db_get("settings", "spam_active", False):
         chat = db_get("settings", "spam_chat")
         reply_to = db_get("settings", "spam_reply")
         dmin = db_get("settings", "spam_delay_min", 3.0)
         dmax = db_get("settings", "spam_delay_max", 5.0)
+        bmin = db_get("settings", "spam_batch_min", 1)
+        bmax = db_get("settings", "spam_batch_max", 1)
         if chat:
             spam_running = True
             spam_delay_min = float(dmin) if dmin else 3.0
             spam_delay_max = float(dmax) if dmax else 5.0
+            spam_batch_min = max(1, int(bmin or 1))
+            spam_batch_max = max(1, int(bmax or 1))
             spam_task = asyncio.ensure_future(_spam_loop(chat, reply_to))
             spam_typing_task = asyncio.ensure_future(_keep_typing(chat))
             print("  ↻ تم استئناف الإرسال التلقائي (السبام)")
