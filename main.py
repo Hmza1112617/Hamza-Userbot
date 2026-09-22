@@ -1652,10 +1652,14 @@ async def _spam_loop(chat_id, reply_to=None):
 
 
 async def _spam_next_word():
-    """يولّد كلمة السب: عبر AI إذا مفعّل، وإلا من المكتبة المحلية"""
+    """يولّد كلمة السب: عبر AI إذا مفعّل (يتناوب نمط فوضوي/تعييب بالاسم)، وإلا من المكتبة المحلية"""
     if spam_ai_enabled:
+        _spam_next_word.toggle = not getattr(_spam_next_word, "toggle", False)
         try:
-            prompt = _ai_insult_prompt(spam_ai_target)
+            if _spam_next_word.toggle:
+                prompt = _ai_prompt_chaos(spam_ai_target)
+            else:
+                prompt = _ai_prompt_name(spam_ai_target)
             word = await asyncio.to_thread(_ai_request_sync, prompt)
             if word and len(word) > 10:
                 return word
@@ -1664,7 +1668,7 @@ async def _spam_next_word():
     return generate_insult()
 
 
-def _ai_insult_prompt(target):
+def _ai_prompt_chaos(target):
     name = (target or "").strip().lstrip("@") or "الفاجر"
     return (
         'Generate a chaotic Iraqi Arabic insult rant targeting a person whose name is: "'
@@ -1676,6 +1680,25 @@ def _ai_insult_prompt(target):
         "- Randomly interleave these components with your own invented ones: acts (سحق, ادعس, اغتصب, انيجمك, احرق, اشليف, انيج, اطحن), body parts (كسمك, قحبتي, طيزك, عيري, زبي, امك, كس اختك, كس خالتك, شرفك, دينك), target insults (ي العري, ي الكلبه, ي المحرمه, ي القحبتين, ي الغبيتين, ي الديوث, ي الاوزب, ي ابن جراره, ي ابن عريه, ي ابن فاجره, ي ابن ديوث, ي مستديث, ي زنوه, ي كاثوليكيه)\n"
         "- No structure, no punctuation, chaotic stream of words, each sentence different in length and flavor\n"
         "- 3-5 sentences, starting with the Arabic-converted name\n"
+        "- Write ONLY the rant, no explanation"
+    )
+
+
+def _ai_prompt_name(target):
+    name = (target or "").strip().lstrip("@") or "الفاجر"
+    return (
+        'Generate a savage mockery attack in Iraqi Arabic targeting a person named: "'
+        + name + '"'
+        + "\n\nThe style is interrogative-mockery: take his name / a word in his name, convert it to Arabic if English, and turn it into a dirty rhetorical question that humiliates him, exactly like these patterns:\n"
+        "- اسمك متعاطي؟ متعاطي شنو على مص زب وتعاطيت؟\n"
+        "- سكران؟ اسمك سكران؟ شنو مصيت العير وسكرت؟\n"
+        "- قال اسمك كريم، كريم وين ومحارمك حريم للشارع؟\n\n"
+        "Rules:\n"
+        "- Build 4-7 such rhetorical-mockery sentences: each one picks a word from his name, repeats it as a question, then answers it with a dirty degrading punchline\n"
+        "- Convert target name to Arabic letters if English. NEVER keep Latin letters. ONLY Arabic output.\n"
+        "- Mix in Iraqi insults (ي بن قحبه, يا عري, يا ديوث) as punctuation between sentences\n"
+        "- No punctuation structure, flowing rant\n"
+        "- Always start by addressing the person: اسمع ي <اسمه> ي بن قحبه\n"
         "- Write ONLY the rant, no explanation"
     )
 
