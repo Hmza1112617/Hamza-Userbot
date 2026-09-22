@@ -1634,18 +1634,30 @@ async def _spam_loop(chat_id, reply_to=None):
     while spam_running:
         import random as _rnd
         batch = max(1, int(_rnd.uniform(spam_batch_min, spam_batch_max)))
+        words = []
         for i in range(batch):
             if not spam_running:
                 break
-            word = await _spam_next_word()
-            try:
-                if flood_guard_enabled and flood_guard:
-                    await flood_guard.wait_if_needed()
-                await client.send_message(chat_id, word, reply_to=reply_to)
-            except FloodWaitError as e:
-                await asyncio.sleep(e.seconds + 1)
-            except Exception as e:
-                print(f"spam error: {e}")
+            words.append(await _spam_next_word())
+        if words:
+            if flood_guard_enabled and flood_guard:
+                await flood_guard.wait_if_needed()
+            if len(words) == 1:
+                try:
+                    await client.send_message(chat_id, words[0], reply_to=reply_to)
+                except FloodWaitError as e:
+                    await asyncio.sleep(e.seconds + 1)
+                except Exception as e:
+                    print(f"spam error: {e}")
+            else:
+                results = await asyncio.gather(
+                    *[client.send_message(chat_id, w, reply_to=reply_to) for w in words],
+                    return_exceptions=True,
+                )
+                for r in results:
+                    if isinstance(r, FloodWaitError):
+                        await asyncio.sleep(r.seconds + 1)
+                        break
         if spam_delay_min > 0 or spam_delay_max > 0:
             speed = _rnd.uniform(spam_delay_min, spam_delay_max)
             await asyncio.sleep(speed)
