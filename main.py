@@ -13,6 +13,7 @@ import os
 import random
 import re
 import string
+import subprocess
 import sys
 import time
 import zlib
@@ -578,7 +579,8 @@ MENU = {
 {b}`{cmd}وقف`{e} — إيقاف عملية التفليش""",
     "م22": """{header_opa امر التحميل}
 
-{b}`{cmd}تيك`{e} — تحميل من تيك توك (فيديو/صورة/مزيكا)""",
+{b}`{cmd}تيك`{e} — تحميل من تيك توك (فيديو/صورة/مزيكا)
+{b}`{cmd}يوت`{e} — بحث في يوتيوب وتحميل الأغنية MP3""",
 }
 
 
@@ -4817,6 +4819,110 @@ async def _(event):
         await edit_or_reply(m, f"X خطأ: `{e}`")
     finally:
         _tik_cleanup(tmp_files)
+
+
+_YOUTUBE_RESULTS = {}
+_YT_BIN_CACHE = {}
+
+
+def _yt_bin():
+    """يعيد مسار ثنائي yt-dlp مع العلمات المناسبة (يحاول static المدمج أولاً)"""
+    if _YT_BIN_CACHE:
+        return _YT_BIN_CACHE["path"], _YT_BIN_CACHE["flags"]
+    import shutil
+    candidates = []
+    for d in (BASE_DIR, "/tmp"):
+        p = os.path.join(d, "yt-dlp-static")
+        if os.path.exists(p):
+            candidates.append((p, ["--no-update", "--impersonate", "chrome"]))
+    for name in ("yt-dlp", "yt-dlp-static"):
+        p = shutil.which(name)
+        if p:
+            flags = ["--no-update"] if "static" in name else []
+            candidates.append((p, flags))
+    for p, flags in candidates:
+        try:
+            proc = subprocess.check_call(
+                [p, "--no-update", "--version"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=30,
+            )
+            _YT_BIN_CACHE.update({"path": p, "flags": flags})
+            return p, flags
+        except Exception:
+            continue
+    return "yt-dlp", []
+
+
+@cmd(r"يوت(?:\s|$)([\s\S]*)")
+async def _(event):
+    query = (event.pattern_match.group(1) or "").strip()
+    if not query:
+        return await edit_delete(event, f"- اكتب: {PREFIX}يوت <اسم الأغنية>", 8)
+    m = await event.edit("- جاري البحث في يوتيوب...")
+    binpath, flags = _yt_bin()
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            binpath, *flags, "--no-warnings", "--flat-playlist",
+            "--print", "%(id)s | %(duration)s | %(title)s",
+            f"ytsearch5:{query}",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+        )
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=45)
+        lines = [ln for ln in (out or b"").decode("utf-8", "ignore").splitlines() if ln.strip()]
+    except Exception as e:
+        return await edit_or_reply(m, f"X خطأ البحث: `{e}`")
+    if not lines:
+        return await edit_or_reply(m, "X لا توجد نتائج")
+    results = []
+    text = f"**| نتائج البحث:** `{query}`\n\n"
+    for i, ln in enumerate(lines[:5], 1):
+        parts = ln.split(" | ", 2)
+        vid = parts[0].strip()
+        dur = parts[1].strip() if len(parts) > 2 else "?"
+        title = parts[2].strip() if len(parts) > 2 else ln
+        results.append({"id": vid, "title": title, "duration": dur})
+        text += f"`{PREFIX}{i}` — {title}\n⏱ {dur}ث\n\n"
+    text += f"اكتب رقماً مثل `{PREFIX}1` لتحميل الأغنية الأختيارية"
+    _YOUTUBE_RESULTS[event.chat_id] = results
+    await m.edit(text)
+
+
+@cmd(r"([1-5])$")
+async def _(event):
+    pick = int(event.pattern_match.group(1)) - 1
+    results = _YOUTUBE_RESULTS.get(event.chat_id)
+    if not results:
+        return await edit_delete(event, f"- لا توجد نتائج — استخدم {PREFIX}يوت <الاسم> أولاً", 8)
+    if pick < 0 or pick >= len(results):
+        return await edit_delete(event, "- رقم غير صحيح", 6)
+    item = results[pick]
+    m = await event.edit(f"- جاري تحميل: {item['title']}...")
+    binpath, flags = _yt_bin()
+    tmp = os.path.join(BASE_DIR, f"yt_{_ai_rand_id()}.mp3")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            binpath, *flags, "--no-warnings", "-f", "140/ba[ext=m4a]/ba",
+            "-x", "--audio-format", "mp3", "-o", tmp,
+            f"https://www.youtube.com/watch?v={item['id']}",
+            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
+        )
+        await asyncio.wait_for(proc.communicate(), timeout=240)
+        if not os.path.exists(tmp) or os.path.getsize(tmp) < 1024:
+            return await edit_or_reply(m, "X فشل التنزيل — أعد المحاولة")
+        await client.send_file(event.chat_id, tmp, caption=item["title"][:1024] or None)
+        try:
+            await m.delete()
+        except Exception:
+            pass
+    except Exception as e:
+        await edit_or_reply(m, f"X خطأ: `{e}`")
+    finally:
+        if os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except Exception:
+                pass
 
 
 async def _follow_checker_loop():
