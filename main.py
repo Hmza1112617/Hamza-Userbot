@@ -482,6 +482,7 @@ MENU = {
 {b}`{cmd}نيكه`{e} — سبام بتحديد أكثر من هدف (يوزرات/رد)
 {b}`{cmd}خلاص`{e} — إيقاف السبام من كل الأهداف
 {b}`{cmd}الأهداف`{e} — عرض أهداف الإرسال الجارية
+{b}`{cmd}مراقبه`{e} — تفعيل/إيقاف مراقبة الأهداف (تنبيه إذا توقف 3 دقائق)
 {b}`{cmd}سرعه`{e} — ضبط سرعة الإرسال
 {b}`{cmd}دفعة`{e} — عدد رسائل كل دفعة (مثل 1 ~ 10)
 {b}`{cmd}سب ذكاء`{e} — توغل السب بـ AI بدل المولّد المحلي
@@ -1449,6 +1450,9 @@ spam_batch_min = 1
 spam_batch_max = 1
 spam_ai_enabled = False
 spam_ai_target = ""
+watch_targets = {}
+watch_enabled = False
+watch_task = None
 follow_running = False
 forward_running = False
 forward_task = None
@@ -1818,9 +1822,16 @@ async def _(event):
         if cid in spam_targets:
             continue
         r_to = reply_to if cid == event.chat_id else None
-        spam_targets[cid] = {"reply": r_to}
+        ent = None
+        try:
+            ent = await event.client.get_entity(cid)
+        except Exception:
+            ent = None
+        spam_targets[cid] = {"reply": r_to, "ent": ent}
         asyncio.ensure_future(_spam_loop(cid, r_to))
         asyncio.ensure_future(_keep_typing(cid))
+        if watch_enabled and ent:
+            watch_targets[str(cid)] = _watch_build_info(ent)
         started.append(cid)
 
     if not started:
@@ -1882,6 +1893,7 @@ async def _(event):
         return await edit_delete(event, "- الإرسال متوقف بالفعل", 6)
     count = len(spam_targets)
     spam_targets.clear()
+    watch_targets.clear()
     db_set("settings", "spam_targets", [])
     await event.edit(f" تم إيقاف الإرسال من كل الأهداف ({count})")
 
@@ -1897,6 +1909,167 @@ async def _(event):
     await edit_or_reply(
         event, f"**| أهداف الإرسال الجارية ({len(lines)}):**\n\n" + "\n".join(lines)
     )
+
+
+@cmd(r"مراقبه(?:\s|$)([\s\S]*)")
+async def _(event):
+    global watch_enabled, watch_task, watch_targets
+    arg = (event.pattern_match.group(1) or "").strip()
+    if arg:
+        ent = None
+        try:
+            if arg.isdigit() or (arg.startswith("-") and arg[1:].isdigit()):
+                ent = await event.client.get_entity(int(arg))
+            else:
+                ent = await event.client.get_entity(arg)
+        except Exception:
+            ent = None
+        if not ent:
+            return await edit_delete(event, "- لم أجد الهدف", 8)
+        cid = getattr(ent, "id", None)
+        if not cid:
+            return await edit_delete(event, "- لا يمكن مراقبة هذا الهدف", 8)
+        if not watch_enabled:
+            watch_enabled = True
+            db_set("settings", "watch_enabled", True)
+        watch_targets[str(cid)] = _watch_build_info(ent)
+        if watch_task is None or watch_task.done():
+            watch_task = asyncio.ensure_future(_watch_loop())
+        await edit_or_reply(
+            event, f"تمت إضافة المراقبة على: {get_display_name(ent)} — `{cid}` ✓\nسيتنبّه في المحفوظات إذا توقف عن الإرسال 3 دقائق"
+        )
+        return
+    watch_enabled = not watch_enabled
+    db_set("settings", "watch_enabled", watch_enabled)
+    if watch_enabled:
+        if not watch_targets and spam_targets:
+            for cid in spam_targets:
+                try:
+                    ent = await event.client.get_entity(cid)
+                    watch_targets[str(cid)] = _watch_build_info(ent)
+                except Exception:
+                    watch_targets[str(cid)] = {"id": cid, "name": str(cid), "username": "", "peer": cid}
+        if watch_task is None or watch_task.done():
+            watch_task = asyncio.ensure_future(_watch_loop())
+        await edit_or_reply(event, f"مراقبة الأهداف: مفعلة ✓ ({len(watch_targets)} هدف)\nتنبيه في المحفوظات إذا توقف الهدف 3 دقائق")
+    else:
+        if watch_task:
+            watch_task.cancel()
+            watch_task = None
+        watch_targets = {}
+        await edit_or_reply(event, "مراقبة الأهداف: معطلة ✓")
+
+
+def _watch_build_info(ent):
+    return {
+        "id": getattr(ent, "id", None),
+        "name": get_display_name(ent) if not getattr(ent, "broadcast", False) and not getattr(ent, "megagroup", False) else getattr(ent, "title", str(getattr(ent, "id", ""))),
+        "username": getattr(ent, "username", "") or "",
+        "peer": getattr(ent, "id", None),
+        "is_chat": bool(getattr(ent, "megagroup", False) or getattr(ent, "broadcast", False)),
+        "last_msg_id": None,
+        "last_date": None,
+    }
+
+
+def _peer_msg_link(peer, msg_id, username=""):
+    """يبني رابط رسالة كامل لأي نوع: يوزر/مجموعة/قناة، خاصة أو عامة"""
+    if username:
+        return f"https://t.me/{username}/{msg_id}"
+    if peer is None or msg_id is None:
+        return ""
+    pid = int(peer)
+    if pid > 0:
+        return f"https://t.me/c/{pid}/{msg_id}"
+    s = str(pid)
+    if s.startswith("-100"):
+        s = s[4:]
+    elif s.startswith("-"):
+        s = s[1:]
+    return f"https://t.me/c/{s}/{msg_id}"
+
+
+async def _watch_loop():
+    """حلقة مراقبة: إذا لم يرسل الهدف أي شيء لـ 3 دقائق ينبّه في المحفوظات"""
+    global watch_enabled
+    me_id = None
+    try:
+        me = await client.get_me()
+        me_id = me.id
+    except Exception:
+        pass
+    while watch_enabled:
+        try:
+            for key, info in list(watch_targets.items()):
+                try:
+                    peer = int(key)
+                except Exception:
+                    continue
+                try:
+                    await _watch_check(peer, info, me_id)
+                except Exception as e:
+                    print(f"watch error: {e}")
+        except Exception:
+            pass
+        await asyncio.sleep(15)
+
+
+async def _watch_check(peer, info, me_id):
+    """يفحص آخر رسالة من الهدف في مكانه ويقرر التنبيه"""
+    last_msg = None
+    try:
+        if info.get("is_chat"):
+            async for m in client.iter_messages(peer, limit=1):
+                last_msg = m
+                break
+        else:
+            async for m in client.iter_messages(peer, limit=5):
+                if m and getattr(m, "sender_id", None) == me_id:
+                    continue
+                if m and getattr(m, "sender_id", None):
+                    last_msg = m
+                    break
+    except Exception:
+        return
+    now = time.time()
+    if last_msg is None:
+        return
+    last_date = getattr(last_msg, "date", None)
+    if not last_date:
+        return
+    last_ts = last_date.timestamp()
+    age = now - last_ts
+    if age < 180:
+        if info.get("last_date"):
+            info["last_date"] = None
+        return
+    last_id = info.get("last_msg_id")
+    if last_id == last_msg.id and info.get("last_date"):
+        return
+    info["last_msg_id"] = last_msg.id
+    info["last_date"] = last_ts
+    msg_id = last_msg.id
+    link = _peer_msg_link(last_msg.chat_id, msg_id, info.get("username", ""))
+    sender = getattr(last_msg.sender, "first_name", None)
+    sender_name = get_display_name(last_msg.sender) if last_msg.sender else (info.get("name") or "")
+    uname = info.get("username", "")
+    lines = [
+        f"الاسم: {sender_name}",
+        f"الايدي: `{peer}`",
+    ]
+    if uname:
+        lines.append(f"المعرف: @{uname}")
+    lines.append(f"آخر نشاط: قبل {int(age)} ثانية")
+    lines.append(f"آخر رسالة: [اضغط هنا]({link})")
+    txt = (
+        "⚠️ **| تنبيه المراقبة — توقف الهدف**\n\n"
+        + "\n".join(lines)
+        + "\n\n— انتهت مهلة 3 دقائق دون إرسال"
+    )
+    try:
+        await client.send_message("me", txt)
+    except Exception as e:
+        print(f"watch alert error: {e}")
 
 
 @cmd(r"دفعة(?:\s|$)([\s\S]*)")
@@ -4971,7 +5144,7 @@ async def _follow_checker_loop():
 
 async def _resume_persistent_tasks():
     """يستأنف المهام المستمرة بعد إعادة التشغيل من إعدادات settings.json"""
-    global spam_targets, spam_delay_min, spam_delay_max, spam_batch_min, spam_batch_max, spam_ai_enabled, spam_ai_target, _time_task
+    global spam_targets, spam_delay_min, spam_delay_max, spam_batch_min, spam_batch_max, spam_ai_enabled, spam_ai_target, watch_enabled, watch_task, watch_targets, _time_task
 
     spam_ai_enabled = db_get("settings", "spam_ai_enabled", False)
     spam_ai_target = db_get("settings", "spam_ai_target", "")
@@ -4999,6 +5172,21 @@ async def _resume_persistent_tasks():
             except Exception:
                 continue
         print("  ↻ تم استئناف الإرسال التلقائي (السبام) — يهدف " + str(len(spam_targets)))
+
+    watch_enabled = db_get("settings", "watch_enabled", False)
+    if watch_enabled:
+        if not watch_targets and spam_targets:
+            for cid, info in spam_targets.items():
+                ent = info.get("ent")
+                try:
+                    if not ent:
+                        ent = await client.get_entity(cid)
+                    watch_targets[str(cid)] = _watch_build_info(ent)
+                except Exception:
+                    watch_targets[str(cid)] = {"id": cid, "name": str(cid), "username": "", "peer": cid}
+        if watch_task is None or watch_task.done():
+            watch_task = asyncio.ensure_future(_watch_loop())
+        print("  ↻ تم استئناف مراقبة الأهداف")
 
     if db_get("settings", "time_active", False):
         if _time_task is None or _time_task.done():
