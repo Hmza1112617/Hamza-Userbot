@@ -1786,7 +1786,7 @@ async def _(event):
 
 @cmd(r"نيكه(?:\s|$)([\s\S]*)")
 async def _(event):
-    global spam_ai_target
+    global spam_ai_target, watch_task, watch_targets
     arg = (event.pattern_match.group(1) or "").strip()
     reply = await event.get_reply_message()
     reply_to = reply.id if reply else None
