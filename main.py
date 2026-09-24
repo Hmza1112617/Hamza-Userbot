@@ -3915,15 +3915,32 @@ def _report_settings():
     return s
 
 
+_REPORT_OPTIONS = {
+    "spam": b"0",
+    "abuse": b"1",
+    "porn": b"2",
+    "pornography": b"2",
+    "violence": b"4",
+    "drugs": b"5",
+    "copyright": b"10",
+    "other": b"8",
+    "child_abuse": b"9",
+    "fake": b"7",
+    "illegal": b"6",
+    "illegal_drugs": b"6",
+}
+
+
 async def _do_report(peer_entity, reason_name, message, msg_id=None):
     """ينفّذ بلاغاً واحداً ويرجع True أو نص الخطأ"""
     reason = _report_reason_obj(reason_name)
+    option = _REPORT_OPTIONS.get((reason_name or "spam").lower(), b"1")
     try:
         if msg_id is not None:
             await client(functions.messages.ReportRequest(
                 peer=peer_entity,
                 id=[int(msg_id)],
-                option=b"1",
+                option=option,
                 message=message,
             ))
         else:
@@ -3953,6 +3970,22 @@ def _extract_msg_id_from_url(url):
     if m:
         return int(m.group(1))
     return None
+
+
+def _peer_report_link(chat_id, msg_id):
+    """يبني رابط رسالة للبلاغ لأي نوع: خاص/مجموعة/قناة، عامة أو خاصة"""
+    try:
+        pid = int(chat_id)
+    except Exception:
+        return ""
+    if pid > 0:
+        return f"https://t.me/c/{pid}/{msg_id}"
+    s = str(pid)
+    if s.startswith("-100"):
+        s = s[4:]
+    elif s.startswith("-"):
+        s = s[1:]
+    return f"https://t.me/c/{s}/{msg_id}"
 
 
 async def _target_still_alive(target):
@@ -4043,7 +4076,7 @@ async def _(event):
         f"`{PREFIX}شد_نوع` <نوع>\n"
         f"`{PREFIX}شد_رساله` <نص>\n"
         f"`{PREFIX}شد_سرعه` <ثواني>\n"
-        f"`{PREFIX}شد` | يبدأ البلاغ المستمر\n"
+        f"`{PREFIX}شد` <رابط/يوزر> أو رد على رسالة | يبدأ البلاغ\n"
         f"`{PREFIX}شد_ايقاف` | يوقفه",
     )
 
@@ -4051,11 +4084,29 @@ async def _(event):
 @cmd(r"شد(?:\s|$)([\s\S]*)")
 async def _(event):
     arg = (event.pattern_match.group(1) or "").strip()
+    reply = await event.get_reply_message()
     cfg = _report_settings()
-    target = arg or cfg["target"]
-    if not target:
-        return await edit_delete(event, f"- اكتب: {PREFIX}شد <رابط/يوزر/آيدي> (أو ضع هدفاً بـ {PREFIX}شد_هدف)", 8)
-    cfg["target"] = target
+
+    target = None
+    reply_peer = None
+    reply_msg_id = None
+
+    if reply is not None:
+        try:
+            reply_peer = await event.get_input_chat()
+        except Exception:
+            reply_peer = None
+        reply_msg_id = reply.id
+        if reply_peer is not None:
+            target = _peer_report_link(event.chat_id, reply_msg_id)
+            cfg["target"] = target
+
+    if reply_peer is None:
+        target = arg or cfg["target"]
+        if not target:
+            return await edit_delete(event, f"- اكتب: {PREFIX}شد <رابط/يوزر/آيدي> أو رد على رسالة", 8)
+        cfg["target"] = target
+
     cfg["running"] = True
     db_write("report_cfg", cfg)
     m = await event.edit(
@@ -4069,16 +4120,22 @@ async def _(event):
         if not cfg.get("running", False):
             await edit_or_reply(m, f" تم الإيقاف بطلبك.\n بلاغات مُرسلة: {sent}")
             return
-        alive, res = await _target_still_alive(target)
-        if not alive:
-            await edit_or_reply(m, f"X توقّف البلاغ تلقائياً:\n{res}\n بلاغات مُرسلة: {sent}")
-            cfg = _report_settings()
-            cfg["running"] = False
-            db_write("report_cfg", cfg)
-            return
-        ent = res
-        msg_id = _extract_msg_id_from_url(target)
-        r = await _do_report(ent, cfg["reason"], cfg["message"], msg_id=msg_id)
+        try:
+            if reply_peer is not None and reply_msg_id is not None:
+                r = await _do_report(reply_peer, cfg["reason"], cfg["message"], msg_id=reply_msg_id)
+            else:
+                alive, res = await _target_still_alive(target)
+                if not alive:
+                    await edit_or_reply(m, f"X توقّف البلاغ تلقائياً:\n{res}\n بلاغات مُرسلة: {sent}")
+                    cfg = _report_settings()
+                    cfg["running"] = False
+                    db_write("report_cfg", cfg)
+                    return
+                ent = res
+                msg_id = _extract_msg_id_from_url(target)
+                r = await _do_report(ent, cfg["reason"], cfg["message"], msg_id=msg_id)
+        except Exception as e:
+            r = f"ERR:{e}"
         if r is True:
             sent += 1
             err_count = 0
