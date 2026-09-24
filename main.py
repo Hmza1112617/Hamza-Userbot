@@ -483,6 +483,7 @@ MENU = {
 {b}`{cmd}خلاص`{e} — إيقاف السبام من كل الأهداف
 {b}`{cmd}الأهداف`{e} — عرض أهداف الإرسال الجارية
 {b}`{cmd}مراقبه`{e} — تفعيل/إيقاف مراقبة الأهداف (تنبيه إذا توقف 3 دقائق)
+{b}`{cmd}مراقبين`{e} — عرض أهداف المراقبة وحالتها
 {b}`{cmd}سرعه`{e} — ضبط سرعة الإرسال
 {b}`{cmd}دفعة`{e} — عدد رسائل كل دفعة (مثل 1 ~ 10)
 {b}`{cmd}سب ذكاء`{e} — توغل السب بـ AI بدل المولّد المحلي
@@ -1830,8 +1831,13 @@ async def _(event):
         spam_targets[cid] = {"reply": r_to, "ent": ent}
         asyncio.ensure_future(_spam_loop(cid, r_to))
         asyncio.ensure_future(_keep_typing(cid))
-        if watch_enabled and ent:
-            watch_targets[str(cid)] = _watch_build_info(ent)
+        if watch_enabled:
+            if ent:
+                watch_targets[str(cid)] = _watch_build_info(ent)
+            else:
+                watch_targets[str(cid)] = {"id": cid, "name": str(cid), "username": "", "peer": cid, "watch_start": time.time()}
+            if watch_task is None or watch_task.done():
+                watch_task = asyncio.ensure_future(_watch_loop())
         started.append(cid)
 
     if not started:
@@ -1960,7 +1966,27 @@ async def _(event):
         await edit_or_reply(event, "مراقبة الأهداف: معطلة ✓")
 
 
+@cmd(r"مراقبين$")
+async def _(event):
+    global watch_enabled, watch_task
+    if not watch_enabled:
+        return await edit_or_reply(event, "- المراقبة غير مفعلة — استخدم `{PREFIX}مراقبه`")
+    if not watch_targets:
+        return await edit_or_reply(event, "- لا توجد أهداف مراقبة — حدد واحداً بـ `{PREFIX}مراقبه <يوزر>`")
+    now = time.time()
+    lines = []
+    for key, info in watch_targets.items():
+        last = info.get("last_date")
+        last_txt = f"قبل {int(now - last)}ث" if last else "—"
+        name = info.get("name") or key
+        lines.append(f"• {name} — `{key}` | آخر نشاط: {last_txt}")
+    await edit_or_reply(
+        event, f"**| أهداف المراقبة ({len(lines)}):**\n\n" + "\n".join(lines)
+    )
+
+
 def _watch_build_info(ent):
+    now = time.time()
     return {
         "id": getattr(ent, "id", None),
         "name": get_display_name(ent) if not getattr(ent, "broadcast", False) and not getattr(ent, "megagroup", False) else getattr(ent, "title", str(getattr(ent, "id", ""))),
@@ -1969,6 +1995,8 @@ def _watch_build_info(ent):
         "is_chat": bool(getattr(ent, "megagroup", False) or getattr(ent, "broadcast", False)),
         "last_msg_id": None,
         "last_date": None,
+        "watch_start": now,
+        "alerted": None,
     }
 
 
@@ -2015,43 +2043,64 @@ async def _watch_loop():
 
 
 async def _watch_check(peer, info, me_id):
-    """يفحص آخر رسالة من الهدف في مكانه ويقرر التنبيه"""
+    """يفحص آخر رسالة أرسلها الهدف فعلاً ويقرر التنبيه"""
+    now = time.time()
     last_msg = None
     try:
         if info.get("is_chat"):
-            async for m in client.iter_messages(peer, limit=1):
+            async for m in client.iter_messages(peer, limit=30):
+                if m is None or m.out:
+                    continue
+                if getattr(m, "sender_id", None) == me_id:
+                    continue
                 last_msg = m
                 break
         else:
-            async for m in client.iter_messages(peer, limit=5):
-                if m and getattr(m, "sender_id", None) == me_id:
+            async for m in client.iter_messages(peer, limit=30):
+                if m is None or m.out:
                     continue
-                if m and getattr(m, "sender_id", None):
+                if getattr(m, "sender_id", None) == me_id:
+                    continue
+                if getattr(m, "sender_id", None) == peer:
                     last_msg = m
                     break
-    except Exception:
+                if last_msg is None:
+                    last_msg = m
+    except Exception as e:
+        print(f"watch iter error: {e}")
+
+    if not info.get("watch_start"):
+        info["watch_start"] = now
+    start_ts = info["watch_start"]
+
+    if last_msg is not None and getattr(last_msg, "date", None):
+        last_ts = last_msg.date.timestamp()
+        if last_ts > now - 300:
+            info["last_msg_id"] = last_msg.id
+            info["last_date"] = last_ts
+            info["alerted"] = None
+            return
+        if not info.get("last_date"):
+            info["last_msg_id"] = last_msg.id
+            info["last_date"] = last_ts
+
+    reference = info.get("last_date")
+    if not reference:
+        reference = start_ts
+        if now - reference < 180 and not info.get("last_date"):
+            return
+        info["last_date"] = start_ts
+        reference = start_ts
+
+    if now - reference < 180:
         return
-    now = time.time()
-    if last_msg is None:
+
+    if info.get("alerted") and now - info.get("alerted") < 300:
         return
-    last_date = getattr(last_msg, "date", None)
-    if not last_date:
-        return
-    last_ts = last_date.timestamp()
-    age = now - last_ts
-    if age < 180:
-        if info.get("last_date"):
-            info["last_date"] = None
-        return
-    last_id = info.get("last_msg_id")
-    if last_id == last_msg.id and info.get("last_date"):
-        return
-    info["last_msg_id"] = last_msg.id
-    info["last_date"] = last_ts
-    msg_id = last_msg.id
-    link = _peer_msg_link(last_msg.chat_id, msg_id, info.get("username", ""))
-    sender = getattr(last_msg.sender, "first_name", None)
-    sender_name = get_display_name(last_msg.sender) if last_msg.sender else (info.get("name") or "")
+
+    msg_id = info.get("last_msg_id")
+    link = _peer_msg_link(peer, msg_id, info.get("username", ""))
+    sender_name = info.get("name") or str(peer)
     uname = info.get("username", "")
     lines = [
         f"الاسم: {sender_name}",
@@ -2059,8 +2108,8 @@ async def _watch_check(peer, info, me_id):
     ]
     if uname:
         lines.append(f"المعرف: @{uname}")
-    lines.append(f"آخر نشاط: قبل {int(age)} ثانية")
-    lines.append(f"آخر رسالة: [اضغط هنا]({link})")
+    lines.append(f"آخر نشاط: قبل {int(now - reference)} ثانية")
+    lines.append(f"آخر رسالة: [اضغط هنا]({link})" if link else "آخر رسالة: —")
     txt = (
         "⚠️ **| تنبيه المراقبة — توقف الهدف**\n\n"
         + "\n".join(lines)
@@ -2068,6 +2117,8 @@ async def _watch_check(peer, info, me_id):
     )
     try:
         await client.send_message("me", txt)
+        info["alerted"] = now
+        print(f"watch alert sent for {peer}")
     except Exception as e:
         print(f"watch alert error: {e}")
 
